@@ -1,21 +1,53 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <title>Fonts</title>
-    <!-- Required meta tags -->
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<!DOCTYPE html>
+    <head>
+        <meta name="viewport" content="width=device-width,initial-scale=1"> 
+        <meta charset="utf-8">
+        <title>1:1 Program Affordability Calculator</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-HwwvtgBNo3bZJJLYd8oVXjrBZt8cqVSpeBNS5n7C8IVInixGAoxmnlMuBnhbgrkm" crossorigin="anonymous"></script>
+        <script src="https://unpkg.com/jspdf@latest/dist/jspdf.umd.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+        <script src="application.js" defer></script>
+        <script src="scheme.js" defer></script>
+        <script src="lease.js" defer></script>
+        <script src="bundle.js" defer></script>
+        <link rel="stylesheet" href="style.css">
 
-    <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
-  </head>
-  <body>
-   <h1 class="random">The impact of fonts</h1>
-    <script src="randomFonts.js"></script>
-    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
-  </body>
-</html> 
+    </head>
+    <body>
+        <div class="container pt-5">
+            <h1>Affordability Calculator</h1>
+                <div class="card">
+                    <div class="card-body">
+                        <form id="initialForm">
+                            <div class="input-group mb-3 flex-nowrap">
+                                <input name="schoolName" type="text" class="form-control" placeholder="School Name..">
+                            </div>
+                            <div class="input-group mb-3 flex-nowrap">
+                                <input name="customerName" type="text" class="form-control" placeholder="Customer Name..">
+                            </div>
+                            <div class="input-group mb-3 flex-nowrap">
+                                <input name="units" type="number" class="form-control" placeholder="Number of Units..">
+                            </div>
+                            <div class="mb-3 flex-nowrap">
+                                <h6>School Type:</h6>
+                                <input type="radio" class="btn-check" name="schoolTypes" id="option1" autocomplete="off" value="state" checked>
+                                <label class="btn btn-outline-primary" for="option1">State</label>
+                                <input type="radio" class="btn-check" name="schoolTypes" id="option2" autocomplete="off" value="private">
+                                <label class="btn btn-outline-primary" for="option2">Private</label>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            <br>
+            <div id="bundleContainer" class="row gx-3">
+                <div class="col" id="buttonContainer">
+                    <div class="card border-0 align-items-center">
+                        <button id="addBundle" type="button" class="btn btn-light"><svg style="color: #2979FF" xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="bi bi-plus-square" viewBox="0 0 16 16">
+                            <path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/>
+                            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                          </svg></button></div></div></div>
+            <br>
+        </div>
+    </body>
+</html>

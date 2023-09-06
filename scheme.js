@@ -150,7 +150,7 @@ class Scheme {
         return ((12/this.frequency)*this.length)/this.numberOfCollections
     }
 
-    generateForm(s, numBundle){
+    generateForm(s, numBundles){
         const container = document.createElement("div")
         const cardOne = document.createElement("div");
         const cardTwo = document.createElement("div");
@@ -246,7 +246,7 @@ class Scheme {
         cardBodyTwo.style.margin = "15px";
         cardBodyTwo.action=""
 
-        cardBodyTwo.innerHTML = `<div class="input-group mb-3 flex-nowrap   ">
+        let html = `<div class="input-group mb-3 flex-nowrap   ">
         <input name="reserve" type="number" class="form-control" placeholder="reserve fund" step="0.01">
         <span class="input-group-text">%</span>
         </div>
@@ -264,14 +264,17 @@ class Scheme {
         <div class="input-group mb-3 flex-nowrap">
             <span class="input-group-text">£</span>
             <input name="deposit" type="number" class="form-control" placeholder="Deposit.." step="0.01">
-        </div>
-        <div class="form-check">
-            <input class="form-check-input" type="checkbox" value="yes" id="flexCheckDefault`+numBundles.toString()+`" name="ownership">
-            <label class="form-check-label" for="flexCheckDefault">Parent ownership at end of lease?</label>
-        </div>
-        <div class="actions text-center">
-            <input type="submit" class="btn btn-primary" value="Submit">
         </div>`
+        if(this.leaseType != "finance"){
+            html += `<div class="form-check">
+                <input class="form-check-input" type="checkbox" value="yes" id="flexCheckDefault`+numBundles.toString()+`" name="ownership">
+                <label class="form-check-label" for="flexCheckDefault">Parent ownership at end of lease?</label>
+            </div>
+            <div class="actions text-center">
+                <input type="submit" class="btn btn-primary" value="Submit">
+            </div>`
+        }
+        cardBodyTwo.innerHTML = html
         container.appendChild(cardTwo)
 
         return container;
@@ -285,7 +288,7 @@ class Scheme {
             }
         }
     }
-    generatePriceCards(){
+    generatePriceCards(numBundles){
         this.priceCardsGenerated = true;
         const container = document.createElement("div")
         let rows = [document.createElement("div"), document.createElement("div"), document.createElement("div"), document.createElement("div")];
@@ -383,65 +386,59 @@ class Scheme {
 
         //outright summary
         const outrightCol = document.createElement("div");
-        rows[1].appendChild(outrightCol)
         const outrightCard = document.createElement("div");
-        let cardTitle = document.createElement("h6");
-        let cardBody = document.createElement("p");
-    
-
-        cardTitle.classList.add("card-title")
-        cardBody.classList.add("card-text")
-        cardBody.classList.add("multi-collapse")
-        cardBody.style.margin = "15px";
+        outrightCard.classList.add("card")
+        outrightCard.classList.add("mb-4")
+        outrightCard.classList.add("box-shadow")
 
         outrightCol.classList.add("col")
-        outrightCol.appendChild(outrightCard)
 
-        outrightCard.classList.add("card");
-        outrightCard.classList.add("text-center")
-        outrightCard.classList.add("pt-3")
-        outrightCard.appendChild(cardTitle);
-        outrightCard.appendChild(cardBody);
-            
-        cardTitle.innerHTML = "Outright Summary";
-        cardBody.innerHTML = `Total Cost To Parent (Ex VAT):<b> £` + (this.finalPrice()).toFixed(2) +
-                        `</b><br><button class="btn btn-link" type="button" data-bs-toggle="collapse" data-bs-target="#outrightOverview" data-parent=".multi-collapse" aria-expanded="false" aria-controls="collapseExample">
-                            See Breakdown
-                        </button>`
+        rows[1].appendChild(outrightCol)
+
+        outrightCard.innerHTML = `<div class="card-header">
+            <h4 class="my-0 font-weight-normal">Outright Payment</h4>
+        </div>
+        <div class="card-body">
+            <h1 class="card-title pricing-card-title">£`+ this.finalPrice().toFixed(2) +` <small class="text-muted">parental cost</small></h1>
+            <ul class="list-unstyled mt-3 mb-4">
+            <li>One Off Payment</li>
+            <li>Excluding VAT</li>
+            <li style="color: green">Trade in saving per unit: £`+ (this.bundle.tradeIn * (1-this.bundle.tradeInProportion)).toFixed(2) +`</li>
+            </ul>
+            <button class="btn btn-lg btn-block btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#outrightOverview" data-parent=".multi-collapse" aria-expanded="false" aria-controls="collapseExample">
+                See Breakdown
+            </button>
+        </div>`
+
+        outrightCol.appendChild(outrightCard)
 
         //lease summary
 
         const leaseCol = document.createElement("div");
-        rows[1].appendChild(leaseCol)
         const leaseCard = document.createElement("div");
-        cardTitle = document.createElement("h6");
-        cardBody = document.createElement("p");
-    
-
-        cardTitle.classList.add("card-title")
-        cardBody.classList.add("card-text")
-        cardBody.classList.add("multi-collapse")
-        cardBody.style.margin = "15px";
+        leaseCard.classList.add("card")
+        leaseCard.classList.add("mb-4")
+        leaseCard.classList.add("box-shadow")
 
         leaseCol.classList.add("col")
-        leaseCol.appendChild(leaseCard)
+        rows[1].appendChild(leaseCol)
 
-        leaseCard.classList.add("card");
-        leaseCard.classList.add("text-center")
-        leaseCard.classList.add("pt-3")
-        leaseCard.appendChild(cardTitle);
-        leaseCard.appendChild(cardBody);
-        
-            
-        cardTitle.innerHTML = "Repeat Payment Summary";
-
-        cardBody.innerHTML = `<b>This is a `+ this.length.toString() + ` year ` + this.leaseType + ` lease with ` + this.paymentTiming().toLowerCase() + ` payments.
-                </b><br>
-                Cost to parent per collection (over ` + this.numberOfCollections.toString() + ` collections): <b>£` + (this.finalLeasePrice()*this.collectionMultiplier()).toFixed(2) +
-                `</b><br><button class="btn btn-link" type="button" data-bs-toggle="collapse" data-bs-target="#leaseOverview" data-parent=".multi-collapse" aria-expanded="false" aria-controls="collapseExample">
+        leaseCard.innerHTML =  `<div class="card-header">
+                <h4 class="my-0 font-weight-normal">Repeat Payment</h4>
+            </div>
+            <div class="card-body">
+                <h1 class="card-title pricing-card-title">£`+ (this.finalLeasePrice()*this.collectionMultiplier()).toFixed(2) + ` <small class="text-muted">/ collection</small></h1>
+                <ul class="list-unstyled mt-3 mb-4">
+                <li>This is a `+ this.length.toString() + ` year ` + this.leaseType + ` lease</li>
+                <li>Excluding VAT</li>
+                <li style="color: green">Trade in saving per collection: £`+ (this.bundle.tradeIn * (1-this.bundle.tradeInProportion) * this.leaseRate() * this.collectionMultiplier()).toFixed(2) +`</li>
+                </ul>
+                <button class="btn btn-lg btn-block btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#leaseOverview" data-parent=".multi-collapse" aria-expanded="false" aria-controls="collapseExample">
                     See Breakdown
-                </button>`
+                </button>
+            </div>`
 
+            leaseCol.appendChild(leaseCard)
 
 
 
@@ -449,8 +446,8 @@ class Scheme {
         const overviewCol = document.createElement("div");
         rows[0].appendChild(overviewCol);
         const overviewCard = document.createElement("div");
-        cardTitle = document.createElement("h6");
-        cardBody = document.createElement("p");
+        let cardTitle = document.createElement("h6");
+        let cardBody = document.createElement("p");
 
         cardTitle.classList.add("card-title")
         cardBody.classList.add("card-text")

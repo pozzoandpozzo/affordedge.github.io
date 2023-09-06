@@ -56,7 +56,7 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
         let scheme = new Scheme(bundle, mainFormData.get("units"));
         scheme.updateSchemeWithFormData(schoolType)
         // generate new scheme card and add to index
-        const schemeCard = scheme.generateForm(numBundles, numBundles, schoolType);
+        const schemeCard = scheme.generateForm(numBundles, numBundles);
         
     
         //create new column for each field
@@ -105,8 +105,8 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
                 fixButton.style.display = "inline"
             }
 
-            if(scheme.priceCardsGenerated){
-                col2.innerHTML = scheme.generatePriceCards(schoolType, leaseType, advanceArrears, bundles[numBundles]).outerHTML;
+            if(submitted){
+                col2.innerHTML = scheme.generatePriceCards(numBundles).outerHTML;
             }
             for (const [key, value] of Object.entries(bundle.softCopy)) {
                 document.getElementById(key + numBundles.toString()).addEventListener("click", (e) => {
@@ -266,9 +266,9 @@ function generateDeviceForm(bundleNumber){
     cardBody.style.margin = "15px"
 
     cardBody.innerHTML += "<form id=deviceForm" + bundleNumber.toString() + ` class="input-group">
-        <input type="text" class="form-control" name="manufacturer" placeholder="Manufacturer..">
+        <input type="text" class="form-control" name="manufacturer" placeholder="Manufacturer.." required>
         <input type="text" class="form-control" name="SKU" placeholder="SKU..">
-        <input type="number" class="form-control" name="sellPrice" placeholder="Sell Price" step="0.01">
+        <input type="number" class="form-control" name="sellPrice" placeholder="Sell Price" step="0.01" required>
         <input type="submit" class="btn btn-primary" value="Add Device">
     </div></form>`
 

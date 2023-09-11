@@ -68,8 +68,23 @@ class Lease{
                 }
             }
         }
-        this.opLeaseHard = 40.85;
-        this.opLeaseSoft = 47.06;
         this.indicativeValue = 18.5;
+        this.date = this.currentDate()
+    }
+
+    currentDate(){
+        // Date object
+        const date = new Date();
+
+        let currentDay= String(date.getDate()).padStart(2, '0');
+
+        let currentMonth = String(date.getMonth()+1).padStart(2,"0");
+
+        let currentYear = date.getFullYear();
+
+        // we will display the date as DD-MM-YYYY 
+
+        return `${currentDay}-${currentMonth}-${currentYear}`;
+
     }
 }

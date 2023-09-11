@@ -9,10 +9,11 @@ class Scheme {
         this.length = length;
         this.frequency = frequency;
         this.pool = pool;
-        this.reserve = reserve;
+        this.outrightReserve = reserve;
+        this.leaseReserve = reserve;
         this.serviceManagement = serviceManagement;
         this.setup = setup;
-        this.numberOfCollections = numberOfCollections;
+        this.numberOfCollections = numberOfCollections || this.length*(12/this.frequency);
         this.deposit = deposit;
         this.priceCardsGenerated = false;
         this.serviceFees = 0;
@@ -24,8 +25,13 @@ class Scheme {
 
     updateSchemeWithFormData(schoolType){
         this.schoolType = schoolType;
+        this.leaseType = "operating"
     }
-    updateSchemeWithFormOneData(formData, advanceArrears, leaseType){
+
+    setLeaseType(leaseType){
+        this.leaseType = leaseType
+    }
+    updateSchemeWithFormOneData(formData, advanceArrears){
         this.length = parseFloat(formData.get("leaseLength"));
         this.frequency = parseFloat(formData.get("frequency"))
         this.pool = parseFloat(formData.get("pool")) || 0;
@@ -34,12 +40,17 @@ class Scheme {
     }
 
     updateSchemeWithFormTwoData(formData){
-        this.reserve = parseFloat(formData.get("reserve")) || 0;
+        if(formData.get("leaseReserve") == "yes"){
+            this.leaseReserve = parseFloat(formData.get("reserve")) || 0;
+        }
+        if(formData.get("outrightReserve") == "yes"){
+            this.outrightReserve = parseFloat(formData.get("reserve")) || 0;
+        }
         this.serviceManagement = parseFloat(formData.get("serviceCost")) || 0;
         this.setup = parseFloat(formData.get("setup")) || 0;
         this.schoolManagement = parseFloat(formData.get("schoolManagementCost")) || 0;
         this.deposit = parseFloat(formData.get("deposit")) || 0; 
-        this.numberOfCollections = parseFloat(formData.get("collections")) || 1;
+        this.numberOfCollections = parseFloat(formData.get("collections")) || this.length*(12/this.frequency);;
         this.deposit = parseFloat(formData.get("deposit")) || 0
         if(formData.get("ownership") == "yes"){
             this.ownership = true;
@@ -66,12 +77,12 @@ class Scheme {
         return (this.bundleCost() * this.pool)/100;
     }
     
-    calculateReserve(){
-        return (this.bundleCost()*this.reserve)/100;
+    calculateOutrightReserve(){
+        return (this.bundleCost()*this.outrightReserve)/100;
     }
 
     outrightPrice(){
-        return this.bundleCost() + this.calculatePool() + this.calculateReserve() + this.serviceManagement + this.setup;
+        return this.bundleCost() + this.calculatePool() + this.calculateOutrightReserve() + this.serviceManagement + this.setup;
     }
 
     silverwingFee(){
@@ -116,7 +127,7 @@ class Scheme {
     }
 
     calculateLeaseReserve(){
-        return ((this.leaseCost()+this.serviceCost()) * this.reserve)/100 
+        return ((this.leaseCost()+this.serviceCost()) * this.leaseReserve)/100 
     }
 
     totalCost(){
@@ -182,41 +193,33 @@ class Scheme {
 
         //HTML for form
         cardBodyOne.innerHTML = "<h6>Lease Type:</h6>"
-        if(this.schoolType == "private"){
-            cardBodyOne.innerHTML += `
-            <div class="mb-3" id="leaseTypeForm">
-                <input type="radio" class="btn-check" name="leaseTypes" id="option` + ((numBundles+1)*3).toString() + `" autocomplete="off" value="finance">
-                <label class="btn btn-outline-primary" for="option` + ((numBundles+1)*3).toString() + `">Finance</label>
-                <input type="radio" class="btn-check" name="leaseTypes" id="option` + ((numBundles+1)*4).toString() + `" autocomplete="off" value="operating"checked>
-                <label class="btn btn-outline-primary" for="option` + ((numBundles+1)*4).toString() + `">Operating</label></div>`
-        }
         cardBodyOne.innerHTML += 
         `<div class="mb-3" id="AdvanceArrearsForm">
-            <input type="radio" class="btn-check" name="advanceArrears" id="option` + ((numBundles+1)*5).toString() + `" autocomplete="off" value="Advance" checked>
-            <label class="btn btn-outline-primary" for="option` + ((numBundles+1)*5).toString() + `">Advance</label>
-            <input type="radio" class="btn-check" name="advanceArrears" id="option` + ((numBundles+1)*6).toString() + `" autocomplete="off" value="Arrears">
-            <label class="btn btn-outline-primary" for="option` + ((numBundles+1)*6).toString() + `">Arrears</label></div>`
-        if(this.schoolType == "state"){
-            cardBodyOne.innerHTML +=  `<select name="leaseLength" class="form-select mb-3">
-                <option disabled selected hidden>Lease length</option>
+            <input type="radio" class="btn-check" name="advanceArrears" id="advanceOption` + numBundles.toString() + `" autocomplete="off" value="Advance" checked>
+            <label class="btn btn-outline-primary" for="advanceOption` + numBundles.toString() + `">Advance</label>
+            <input type="radio" class="btn-check" name="advanceArrears" id="arrearsOption` + numBundles.toString() + `" autocomplete="off" value="Arrears">
+            <label class="btn btn-outline-primary" for="arrearsOption` + numBundles.toString() + `">Arrears</label></div>`
+        if(this.leaseType == "operating"){
+            cardBodyOne.innerHTML +=  `<select name="leaseLength" class="form-select mb-3" required>
+                <option value="" disabled selected hidden>Lease length</option>
                 <option value="2">2 years</option>
                 <option value="3">3 years</option>
             </select>
-            <select name="frequency" class="form-select mb-3">
-                <option disabled selected hidden>Payment Frequency</option>
+            <select name="frequency" class="form-select mb-3" required>
+                <option value="" disabled selected hidden>Payment Frequency</option>
                 <option value="1">Monthly</option>
                 <option value="3">Quarterly</option>
                 <option value="12">Annually</option>
             </select>`
         }else{
-            cardBodyOne.innerHTML +=  `<select name="leaseLength" class="form-select mb-3">
-                <option disabled selected hidden>Lease length</option>
+            cardBodyOne.innerHTML +=  `<select name="leaseLength" class="form-select mb-3" required>
+                <option value="" disabled selected hidden>Lease length</option>
                 <option value="2">2 years</option>
                 <option value="3">3 years</option>
             </select>`
             
-            cardBodyOne.innerHTML += `<select name="frequency" class="form-select mb-3">
-                <option disabled selected hidden>Payment Frequency</option>
+            cardBodyOne.innerHTML += `<select name="frequency" class="form-select mb-3" required>
+                <option value="" disabled selected hidden>Payment Frequency</option>
                 <option value="1">Monthly</option>
                 <option value="4">Termly</option>
             </select>`
@@ -246,9 +249,25 @@ class Scheme {
         cardBodyTwo.style.margin = "15px";
         cardBodyTwo.action=""
 
-        let html = `<div class="input-group mb-3 flex-nowrap   ">
+        let html = `<div class="input-group mb-3 flex-nowrap">
         <input name="reserve" type="number" class="form-control" placeholder="reserve fund" step="0.01">
         <span class="input-group-text">%</span>
+        </div>
+        <div class="input-group mb-3 flex-nowrap">
+            <label style="padding-right: 15px;">Apply Reserve Fund To:</label>
+            <div class="form-check" style="padding-right: 15px;">
+                <input class="form-check-input" type="checkbox" value="yes" id="outrightReserveFund`+numBundles.toString() +`" name="outrightReserve">
+                <label class="form-check-label" for="outrightReserveFund`+numBundles.toString()+`">
+                    Outright
+                </label>
+                
+            </div>
+            <div class="form-check" style=" padding-right: 15px;">
+                <input class="form-check-input" type="checkbox" value="yes" id="leaseReserveFund`+numBundles.toString()+`" name="leaseReserve">
+                <label class="form-check-label" for="leaseReserveFund`+numBundles.toString()+`">
+                    Repeat Payments
+                </label>
+            </div>
         </div>
         <div class="input-group mb-3">
             <span class="input-group-text">£</span>
@@ -260,20 +279,11 @@ class Scheme {
         </div>
         <div class="input-group mb-3 flex-nowrap">
             <input name="collections" type="number" class="form-control" placeholder="Number of Collections.." step="1">
-        </div>
-        <div class="input-group mb-3 flex-nowrap">
-            <span class="input-group-text">£</span>
-            <input name="deposit" type="number" class="form-control" placeholder="Deposit.." step="0.01">
+        </div> 
+        <div class="actions text-center">
+            <input type="submit" class="btn btn-primary" value="Submit">
         </div>`
-        if(this.leaseType != "finance"){
-            html += `<div class="form-check">
-                <input class="form-check-input" type="checkbox" value="yes" id="flexCheckDefault`+numBundles.toString()+`" name="ownership">
-                <label class="form-check-label" for="flexCheckDefault">Parent ownership at end of lease?</label>
-            </div>
-            <div class="actions text-center">
-                <input type="submit" class="btn btn-primary" value="Submit">
-            </div>`
-        }
+        
         cardBodyTwo.innerHTML = html
         container.appendChild(cardTwo)
 
@@ -284,7 +294,13 @@ class Scheme {
     copyFormDataAcross(formData, newForm){
         if(formData != null){
             for(let i = 0; i < newForm.elements.length-1; i++){
-                newForm.elements[i].value = formData.get(newForm.elements[i].name)
+                if(newForm.elements[i].type == "radio"){
+                    newForm.elements[i].checked = (formData.get(newForm.elements[i].name) != null)
+                }else if(newForm.elements[i].type == "checkbox"){
+                    newForm.elements[i].checked = (formData.get(newForm.elements[i].name) == "yes")
+                }else{
+                    newForm.elements[i].value = formData.get(newForm.elements[i].name)
+                }
             }
         }
     }
@@ -405,7 +421,7 @@ class Scheme {
             <li>Excluding VAT</li>
             <li style="color: green">Trade in saving per unit: £`+ (this.bundle.tradeIn * (1-this.bundle.tradeInProportion)).toFixed(2) +`</li>
             </ul>
-            <button class="btn btn-lg btn-block btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#outrightOverview" data-parent=".multi-collapse" aria-expanded="false" aria-controls="collapseExample">
+            <button class="btn btn-lg btn-block btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#outrightOverview`+numBundles.toString()+`" data-parent=".multi-collapse" aria-expanded="false" aria-controls="collapseExample">
                 See Breakdown
             </button>
         </div>`
@@ -433,7 +449,7 @@ class Scheme {
                 <li>Excluding VAT</li>
                 <li style="color: green">Trade in saving per collection: £`+ (this.bundle.tradeIn * (1-this.bundle.tradeInProportion) * this.leaseRate() * this.collectionMultiplier()).toFixed(2) +`</li>
                 </ul>
-                <button class="btn btn-lg btn-block btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#leaseOverview" data-parent=".multi-collapse" aria-expanded="false" aria-controls="collapseExample">
+                <button class="btn btn-lg btn-block btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#leaseOverview`+numBundles.toString()+`" data-parent=".multi-collapse" aria-expanded="false" aria-controls="collapseExample">
                     See Breakdown
                 </button>
             </div>`
@@ -455,7 +471,7 @@ class Scheme {
 
         overviewCol.classList.add("collapse")
         overviewCol.appendChild(overviewCard)
-        overviewCol.id = "outrightOverview"
+        overviewCol.id = "outrightOverview" + numBundles.toString()
 
         overviewCard.classList.add("card");
         overviewCard.classList.add("text-center")
@@ -561,7 +577,7 @@ class Scheme {
                 `</b></td>
             </tr>`
 
-            if(this.calculateReserve() != 0){
+            if(this.calculateOutrightReserve() != 0){
                 table += `<tr>
                 <td>
                     Reserve Fund
@@ -569,9 +585,9 @@ class Scheme {
                 <td>
                     School
                 </td>
-                <td>£`+ (this.calculateReserve()).toFixed(2) +
+                <td>£`+ (this.calculateOutrightReserve()).toFixed(2) +
                 `</td>
-                <td>£`+ (this.calculateReserve()*1.2).toFixed(2) +
+                <td>£`+ (this.calculateOutrightReserve()*1.2).toFixed(2) +
                 `</td>
             </tr>`
             }
@@ -647,7 +663,7 @@ class Scheme {
 
         leaseOverviewCol.classList.add("collapse")
         leaseOverviewCol.appendChild(leaseOverviewCard)
-        leaseOverviewCol.id = "leaseOverview"
+        leaseOverviewCol.id = "leaseOverview" + numBundles.toString()
 
 
         leaseOverviewCard.classList.add("card");
@@ -994,9 +1010,10 @@ class Scheme {
         table += `</tbody>
         </table>`
 
+        let disclaimer = "<p>Lease rates are subject to credit and variaible until drawdown. Lease rates are based on a pre-inception variable of X, at cost of funds of Y at " + this.lease.date+ ".</p>"
 
 
-        cardBody.innerHTML = table;
+        cardBody.innerHTML = table + disclaimer;
 
     rows[3].outerHTML += "<br>"
     rows[0].outerHTML += "<br>"

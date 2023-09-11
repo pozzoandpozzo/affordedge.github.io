@@ -210,20 +210,33 @@ class Bundle{
     }
 
 
-    generateBundleControls(){
+    leaseTypeButtons(numBundles, schoolType){
+        if(schoolType == "private"){
+            return `<form class="mb-3" id="leaseTypeForm`+numBundles.toString()+`" style="float: left;">
+                <input type="radio" class="btn-check" name="leaseTypes" id="financeOption` + numBundles.toString() + `" autocomplete="off" value="finance">
+                <label class="btn btn-outline-primary" for="financeOption` + numBundles.toString() + `">Finance</label>
+                <input type="radio" class="btn-check" name="leaseTypes" id="operatingOption` + numBundles.toString() + `" autocomplete="off" value="operating"checked>
+                <label class="btn btn-outline-primary" for="operatingOption` + numBundles.toString() + `">Operating</label></form>`
+        }
+        return ""
+    }
+
+    generateBundleControls(numBundles){
         let div = document.createElement("div");
        div.innerHTML = `<div id="tradeInSlider"  style="display: none" class="input-group mb-3 flex-nowrap">
         <label for="vendorProportionSlider`+ numBundles.toString() +`" class="form-label">Net vendor Incentive Proportion</label>
         <input id="vendorProportionSlider`+ numBundles.toString() +`" type="range" class="form-range" min="0" max="1" value="0" step="0.05">
         </div>
-        <div id="recalculatedTable"></div>
+        <div id="recalculatedTable`+numBundles.toString()+`"></div>
         <h6>Indicative FMV: £` + (this.devicePrice*0.185).toFixed(2) + `</h6>
-        <h6>Soft Cost Percentage: <span id="softCost`+numBundles.toString()+`">`+ this.softCostPercentage().toString()+ `%</span></h6>
-        <p id="disclaimer" style="display: none">For an operating lease the percentage of soft cost assets must be under 10%. The button below will transfer your excess soft costs into a separate bundle, resolving this issue.</p>
-        <input style="display: none" id="fixSoftCost"  type="submit" class="btn btn-success mb-3" value="Recalculate"></input>`
+        <div id="operatingControls`+numBundles.toString() +`">
+            <h6>Soft Cost Percentage: <span id="softCost`+numBundles.toString()+`">`+ this.softCostPercentage().toString()+ `%</span></h6>
+            <p id="disclaimer`+numBundles.toString()+`" style="display: none">For an operating lease the percentage of soft cost assets must be under 10%. The button below will transfer your excess soft costs into a separate bundle, resolving this issue.</p>
+        <input style="display: none" id="fixSoftCost`+numBundles.toString()+`"  type="submit" class="btn btn-success mb-3" value="Recalculate"></input></div>`
+
         div.innerHTML += "<form id=bundleForm" + numBundles.toString() + ` class="input-group">
-        <select name="bundleAddon" class="form-select">
-            <option disabled selected hidden>Add to bundle</option>
+        <select name="bundleAddon" class="form-select" required>
+            <option value="" disabled selected hidden>Add to bundle</option>
             <option value="Accessory">Accessory</option>
             <option value="Warranty">Warranty</option>
             <option value="Accidental Damage Maintenance">Accidental Damage Maintenance</option>
@@ -305,7 +318,7 @@ class Bundle{
         return table;
     }
 
-    generateRecalculatedTable(bundleNumber){
+    generateRecalculatedTable(){
         let table =  `<table class="table">
         <thead>
             <tr>

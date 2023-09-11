@@ -4,10 +4,10 @@ let bundles = [];
 let schoolType = "state";
 let leaseType = "operating";
 let advanceArrears = "Advance";
-let numBundles = -1;
+let globalNumBundles = 0;
 let formTwoData = null;
 let formThreeData = null;
-let submitted = false;
+let submitted = [false];
 
 const Container = document.getElementById("bundleContainer");
 
@@ -24,13 +24,13 @@ for(var i = 0, max = radiosOne.length; i < max; i++) {
 // Event listener for the initial plus button which adds bundles
 document.getElementById("addBundle").addEventListener("click", (e) => {
     e.preventDefault();
-    document.getElementById("buttonContainer").style.display = "none";
     //create a new column to put bundle forms in
     let mainFormData = new FormData(document.getElementById("initialForm"));
+    let numBundles = globalNumBundles
     let col = document.createElement("div");
     col.classList.add("col");
     // Add device Form card to the column - Manufacturer, SKU and Price
-    col.appendChild(generateDeviceForm(numBundles+1));
+    col.appendChild(generateDeviceForm(numBundles));
     col.innerHTML += "<br>"
 
 
@@ -38,7 +38,7 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
     Container.insertBefore(col, Container.lastChild);
 
     // Event listener for the device form 
-    const deviceForm = document.getElementById("deviceForm" + (numBundles+1).toString());
+    const deviceForm = document.getElementById("deviceForm" + (numBundles).toString());
     deviceForm.addEventListener("submit", (e) => {
         e.preventDefault(); 
         let formData = new FormData(deviceForm);
@@ -47,8 +47,7 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
         bundles.push(bundle)
 
         // generate next stage of device form with table and soft cost controls
-        deviceForm.outerHTML = bundle.generateTable(numBundles) + bundle.generateBundleControls().innerHTML
-        
+        deviceForm.outerHTML = bundle.leaseTypeButtons(numBundles, schoolType) + bundle.generateTable(numBundles) + bundle.generateBundleControls(numBundles).innerHTML
 
         // create a new row for scheme cards
         let row = document.createElement("div");
@@ -70,10 +69,34 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
 
         const col2 =  document.createElement("div");
         col.appendChild(col2);
+
+        // event listener for lease type buttons for private schools
+        if(schoolType == "private"){
+            let radiosTwo = document.getElementById("leaseTypeForm"+numBundles.toString()).elements["leaseTypes"];
+            for(var i = 0, max = radiosTwo.length; i < max; i++) {
+                console.log(radiosTwo[i])
+                radiosTwo[i].onclick = function() {
+                    leaseType = this.value;
+                    scheme.setLeaseType(leaseType)
+                    console.log(this.value)
+                    console.log(numBundles)
+                    if(leaseType == "finance"){
+                        document.getElementById("operatingControls" + numBundles.toString()).style.display = "none"
+                    }else{
+                        document.getElementById("operatingControls" + numBundles.toString()).style.display = "block"
+                    }
+                }
+            }
+        }
+        
+
         // add event listener for form adding new add ons to the bundle
         let bundleForm = document.getElementById("bundleForm" + numBundles.toString());
         let table = document.getElementById("table"+ numBundles.toString());
         const soft = document.getElementById("softCost"+ numBundles.toString());
+        // fixes the bundle if it goes over 10% by converting soft costs to services until compliant
+        let disclaimer = document.getElementById("disclaimer"+ numBundles.toString());
+        let fixButton = document.getElementById("fixSoftCost"+ numBundles.toString());
         bundleForm.addEventListener("submit", (e) => {
             e.preventDefault();
             let formData = new FormData(bundleForm);
@@ -105,7 +128,7 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
                 fixButton.style.display = "inline"
             }
 
-            if(submitted){
+            if(submitted[numBundles]){
                 col2.innerHTML = scheme.generatePriceCards(numBundles).outerHTML;
             }
             for (const [key, value] of Object.entries(bundle.softCopy)) {
@@ -131,16 +154,12 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
             }
         });
 
-        // fixes the bundle if it goes over 10% by converting soft costs to services until compliant
-        let disclaimer = document.getElementById("disclaimer");
-        let fixButton = document.getElementById("fixSoftCost");
         fixButton.addEventListener("click", (e) => {
             e.preventDefault();
            
-
             bundle.updateTradeIn()
             bundle.fixSoftCost()
-            document.getElementById("recalculatedTable").innerHTML = bundle.generateRecalculatedTable(numBundles)
+            document.getElementById("recalculatedTable" +numBundles.toString()).innerHTML = bundle.generateRecalculatedTable()
             const a = bundle.softCostPercentage();
             if (a <= 10){
                 soft.innerHTML = a.toString() + "%";
@@ -155,7 +174,7 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
             }
 
             if(scheme.priceCardsGenerated){
-                col2.innerHTML = scheme.generatePriceCards(schoolType, leaseType, advanceArrears, bundles[numBundles]).outerHTML;
+                col2.innerHTML = scheme.generatePriceCards(numBundles).outerHTML;
             }
         });
 
@@ -186,14 +205,7 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
         scheme.copyFormDataAcross(formTwoData, formTwo);
         scheme.copyFormDataAcross(formThreeData, formThree);
 
-        if(schoolType == "private"){
-            var radiosTwo = formTwo.elements["leaseTypes"];
-            for(var i = 0, max = radiosTwo.length; i < max; i++) {
-                radiosTwo[i].onclick = function() {
-                    leaseType = this.value;
-                }
-            }
-        }
+
         var radiosThree = formTwo.elements["advanceArrears"];
         for(var i = 0, max = radiosThree.length; i < max; i++) {
             radiosThree[i].onclick = function() {
@@ -206,8 +218,8 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
             formTwoData = new FormData(formTwo);
             scheme.updateSchemeWithFormOneData(formTwoData, advanceArrears, leaseType);
 
-            if(submitted){
-                col2.innerHTML = scheme.generatePriceCards().outerHTML;
+            if(submitted[numBundles]){
+                col2.innerHTML = scheme.generatePriceCards(numBundles).outerHTML;
             }
 
             formThree.parentElement.style.display = "block"
@@ -220,10 +232,8 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
             scheme.updateSchemeWithFormTwoData(formThreeData);
 
 
-            document.getElementById("buttonContainer").style.display = "block"
-
-            col2.innerHTML = scheme.generatePriceCards().outerHTML;
-            submitted = true;
+            col2.innerHTML = scheme.generatePriceCards(numBundles).outerHTML;
+            submitted[numBundles] = true;
             /*
             let PDF = document.createElement("input");
             PDF.id = "pdfButton"
@@ -245,7 +255,8 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
 
        
     });
-    numBundles += 1;
+    globalNumBundles += 1;
+    submitted.push(false)
 });
 
 function generateDeviceForm(bundleNumber){

@@ -18,13 +18,13 @@ class Bundle{
         
     }
 
-    addAddOn(name, price){
+    addAddOn(type, name, price){
         if(name in this.soft){
-            this.soft[name] += price
-            this.softCopy[name] += price
+            this.soft[type + " " + name] += price
+            this.softCopy[type+ " " +name] += price
         }else{
-            this.soft[name] = price
-            this.softCopy[name] = price
+            this.soft[type+ " " + name] = price
+            this.softCopy[type+ " " + name] = price
         }
     }
 
@@ -36,44 +36,6 @@ class Bundle{
 
     setDeposit(value){
         this.deposit = value;
-    }
-
-    updateTradeIn(){
-        this.tradeInLeft = this.tradeIn*(1-this.tradeInProportion)
-        this.hard[this.deviceName] = this.devicePrice;
-        for(var addon in this.soft) {
-            if(this.tradeInLeft > this.softCopy[addon]){
-                this.tradeInLeft -= this.softCopy[addon]
-                this.soft[addon] = 0;
-            }else{
-                this.soft[addon] = this.softCopy[addon]
-            }
-        }   
-        let a = this.minSoftCost()
-        if(a != false){
-            this.soft[this.minSoftCost()[0]] -= this.tradeInLeft;
-        }else{
-            this.hard[this.deviceName] -= this.tradeInLeft;
-        }
-        this.tradeInLeft = 0;
-    }
-
-    minSoftCost(){
-        let min = Infinity;
-        let minKey = "";
-        for (const [key, value] of Object.entries(this.soft)) {
-            if(key != "Accessory"){
-                if(value < min && value > 0){
-                    min = value;
-                    minKey = key
-                }
-            }
-        }
-        if(minKey != ""){
-         return [minKey, min];
-        }else{
-            return false;
-        }
     }
 
     removeSoftCost(name){
@@ -88,25 +50,21 @@ class Bundle{
     moveSoftCostToService(name){
         this.service[name] = this.softCopy[name];
         delete this.soft[name];
-        this.updateTradeIn()
     }
 
     moveSoftCostToOutright(name){
-        this.outright[name] = this.soft[name];
+        this.outright[name] = this.softCopy[name];
         delete this.soft[name];
-        this.updateTradeIn()
     }
 
     moveServiceCostToSoft(name){
         this.soft[name] = this.service[name];
         delete this.service[name];
-        this.updateTradeIn()
     }
 
     moveOutrightCostToSoft(name){
         this.soft[name] = this.outright[name];
         delete this.outright[name];
-        this.updateTradeIn()
     }
 
 
@@ -153,47 +111,86 @@ class Bundle{
         return ((this.softCost()*100)/this.totalCost()).toFixed(1);
     }
     totalCost(){
-        return this.hardCost() + this.softCost() - this.tradeInLeft
+        return this.hardCost() + this.softCost()
     }
 
+
+    resetSoftCost(){
+        for (const [key, value] of Object.entries(this.softCopy)) {
+            this.soft[key] = this.softCopy[key]
+        }
+    }
     fixSoftCost(){
 
         if(this.softCostPercentage() > 0.1){
             let values = []
             let reversed = {}
-            for (const [key, value] of Object.entries(this.softCopy)) {
-                values.push(value);
-                reversed[value] = key;
-                if(key == "Accessory"){
-                    this.moveSoftCostToOutright(key)
-                }else{
-                    this.moveSoftCostToService(key)
+            for (const [key, value] of Object.entries(this.soft)) {
+                if(value > 0){
+                    values.push(value);
+                    reversed[value] = key;
+                    if(key.substring(0,9) == "Accessory"){
+                        this.moveSoftCostToOutright(key)
+                    }else{
+                        this.moveSoftCostToService(key)
+                    }
                 }
             }
-
 
             //turn all values to service
             let array = this.generateSubsets(values)
             let closest = 0;
+            let closestLength = 0;
             let bestSubset = 0
             for(let i = 0; i < array.length; i++){
                 let sum = 0
                 for(let j=0; j < array[i].length; j++){
                     sum += array[i][j]
                 }
-                if((sum)/(this.hardCost()+sum) > closest && (sum)/(this.hardCost()+sum) <= 0.1){
-                    closest = (sum)/(this.hardCost()+sum) 
-                    bestSubset = i
+                if(sum > this.tradeInLeft){
+                    sum -= this.tradeInLeft
+                }else{
+                    sum = 0
+                }
+                if((sum)/(this.hardCost()+sum) <= 0.1){
+                    if((sum)/(this.hardCost()+sum) > closest){
+                        closest = (sum)/(this.hardCost()+sum)
+                        closestLength = array[i].length 
+                        bestSubset = i
+                    }else if((sum)/(this.hardCost()+sum) == closest){
+                        if(array[i].length > closestLength){
+                            closestLength = array[i].length 
+                            bestSubset = i
+                        }
+                    }
+                       
                 }
             }
+
             // turn selecet values back to soft
+            let tradeInRemaining = this.tradeInLeft;
             for(let i=0; i<array[bestSubset].length; i++){
-                if(reversed[array[bestSubset][i]] == "Accessory"){
+                if(reversed[array[bestSubset][i]].substring(0,9) == "Accessory"){
                     this.moveOutrightCostToSoft(reversed[array[bestSubset][i]])
+                    if(this.soft[reversed[array[bestSubset][i]]] < tradeInRemaining){
+                        tradeInRemaining -= this.soft[reversed[array[bestSubset][i]]]
+                        this.soft[reversed[array[bestSubset][i]]] = 0
+                    }else{
+                        this.soft[reversed[array[bestSubset][i]]] -= tradeInRemaining
+                        tradeInRemaining = 0
+                    }
                 }else{
                     this.moveServiceCostToSoft(reversed[array[bestSubset][i]])
+                    if(this.soft[reversed[array[bestSubset][i]]] < tradeInRemaining){
+                        tradeInRemaining -= this.soft[reversed[array[bestSubset][i]]]
+                        this.soft[reversed[array[bestSubset][i]]] = 0
+                    }else{
+                        this.soft[reversed[array[bestSubset][i]]] -= tradeInRemaining
+                        tradeInRemaining = 0
+                    }
                 }
             }
+            this.hard[this.deviceName] -= tradeInRemaining;
         }
     }
     generateSubsets(array){
@@ -221,15 +218,15 @@ class Bundle{
         return ""
     }
 
-    generateBundleControls(numBundles){
+    generateBundleControls(numBundles, lease){
         let div = document.createElement("div");
        div.innerHTML = `<div id="tradeInSlider"  style="display: none" class="input-group mb-3 flex-nowrap">
         <label for="vendorProportionSlider`+ numBundles.toString() +`" class="form-label">Net vendor Incentive Proportion</label>
         <input id="vendorProportionSlider`+ numBundles.toString() +`" type="range" class="form-range" min="0" max="1" value="0" step="0.05">
         </div>
         <div id="recalculatedTable`+numBundles.toString()+`"></div>
-        <h6>Indicative FMV: £` + (this.devicePrice*0.185).toFixed(2) + `</h6>
         <div id="operatingControls`+numBundles.toString() +`">
+            <h6>Indicative FMV: £` + (this.devicePrice*(lease.indicativeValue/100)).toFixed(2) + `</h6>
             <h6>Soft Cost Percentage: <span id="softCost`+numBundles.toString()+`">`+ this.softCostPercentage().toString()+ `%</span></h6>
             <p id="disclaimer`+numBundles.toString()+`" style="display: none">For an operating lease the percentage of soft cost assets must be under 10%. The button below will transfer your excess soft costs into a separate bundle, resolving this issue.</p>
         <input style="display: none" id="fixSoftCost`+numBundles.toString()+`"  type="submit" class="btn btn-success mb-3" value="Recalculate"></input></div>`
@@ -246,7 +243,14 @@ class Bundle{
             <option value="Insurance">Insurance</option>
             <option value="Other">Other</option>
         </select>
-            <input type="number" class="form-control" name="Price" placeholder="Price.." step="0.01">
+        <div class="form-floating">
+            <input type="text" id="nameField" class="form-control" name="addonName" placeholder="Name..">
+            <label for="nameField">Name</label>
+        </div>
+        <div class="form-floating">
+            <input type="number" class="form-control" name="Price" id="priceField" placeholder="Price.." step="0.01">
+            <label for="priceField">Price</label>
+        </div>
             <input type="submit" class="btn btn-primary" value="Add to Bundle">
         </form>`
 
@@ -277,7 +281,7 @@ class Bundle{
         <td></td>
         </tr>`
         for (const [key, value] of Object.entries(this.softCopy)) {
-            table += `<tr>
+            table += `<tr id="row`+ key+bundleNumber.toString() +`">
                 <td>`+ key+
                 `</td>
                 <td>£`+value.toFixed(2) +
@@ -290,7 +294,7 @@ class Bundle{
             </tr>`
         }
         if(this.tradeInProportion < 1 && this.tradeIn > 0){
-            table += `<tr>
+            table += `<tr id="rowLeaseTradeIn`+bundleNumber.toString() +`">
             <td>Net Vendor Incentive</td>
             <td style="color: green">-£`+(this.tradeIn * (1-this.tradeInProportion)).toFixed(2) +
             `</td>
@@ -302,7 +306,7 @@ class Bundle{
             </tr>`
         }
         if(this.tradeInProportion > 0 && this.tradeIn > 0){
-            table += `<tr>
+            table += `<tr id="rowOutrightTradeIn`+bundleNumber.toString() +`">
             <td>Net Vendor Incentive</td>
             <td style="color: green">-£`+(this.tradeIn * (this.tradeInProportion)).toFixed(2) +
             `</td>
@@ -344,7 +348,7 @@ class Bundle{
         <td>£`+this.devicePrice.toFixed(2) +`</td>
         <td style="color: green">-£`+(this.devicePrice-this.hard[this.deviceName]).toFixed(2) +`</td>
         <td>£`+this.hard[this.deviceName].toFixed(2) +`</td>
-        <td>Lease</td>
+        <td>Lease</td'>
         </tr>`
         for (const [key, value] of Object.entries(this.soft)) {
             table += `<tr>

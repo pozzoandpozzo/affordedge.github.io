@@ -8,6 +8,7 @@ let globalNumBundles = 0;
 let formTwoData = null;
 let formThreeData = null;
 let submitted = [false];
+let radiosTwoLock = [false]
 
 const Container = document.getElementById("bundleContainer");
 
@@ -46,8 +47,10 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
         let bundle = new Bundle(formData.get("manufacturer") + " "+ formData.get("SKU"), parseFloat(formData.get("sellPrice")));
         bundles.push(bundle)
 
+        let lease = new Lease()
+
         // generate next stage of device form with table and soft cost controls
-        deviceForm.outerHTML = bundle.leaseTypeButtons(numBundles, schoolType) + bundle.generateTable(numBundles) + bundle.generateBundleControls(numBundles).innerHTML
+        deviceForm.outerHTML = bundle.leaseTypeButtons(numBundles, schoolType) + bundle.generateTable(numBundles) + bundle.generateBundleControls(numBundles, lease).innerHTML
 
         // create a new row for scheme cards
         let row = document.createElement("div");
@@ -55,12 +58,16 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
         let scheme = new Scheme(bundle, mainFormData.get("units"));
         scheme.updateSchemeWithFormData(schoolType)
         // generate new scheme card and add to index
-        const schemeCard = scheme.generateForm(numBundles, numBundles);
-        
+        const schemeCard = scheme.generateForm(numBundles)
     
+        scheme.lease = lease
+    
+        let depositDiv = document.createElement("div")
+        depositDiv.id = "depositDiv" + numBundles.toString()
         //create new column for each field
         col.classList.add("col");
         col.appendChild(row);
+        col.appendChild(depositDiv)
 
         row.classList.add("row");
         row.classList.add("gx-3");
@@ -74,16 +81,25 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
         if(schoolType == "private"){
             let radiosTwo = document.getElementById("leaseTypeForm"+numBundles.toString()).elements["leaseTypes"];
             for(var i = 0, max = radiosTwo.length; i < max; i++) {
-                console.log(radiosTwo[i])
                 radiosTwo[i].onclick = function() {
-                    leaseType = this.value;
-                    scheme.setLeaseType(leaseType)
-                    console.log(this.value)
-                    console.log(numBundles)
-                    if(leaseType == "finance"){
-                        document.getElementById("operatingControls" + numBundles.toString()).style.display = "none"
-                    }else{
-                        document.getElementById("operatingControls" + numBundles.toString()).style.display = "block"
+                    if(!radiosTwoLock[numBundles]){
+                        leaseType = this.value;
+                        scheme.setLeaseType(leaseType)
+                        if(leaseType == "finance"){
+                            document.getElementById("operatingControls" + numBundles.toString()).style.display = "none"
+                            document.getElementById("leaseLengthSelect"+numBundles.toString()).innerHTML = `
+                            <option value="" disabled selected hidden>Lease length</option>
+                            <option value="2">2 years</option>
+                            <option value="3">3 years</option>
+                            <option value="4">4 years</option>
+                            <option value="5">5 years</option>`
+                        }else{
+                            document.getElementById("operatingControls" + numBundles.toString()).style.display = "block"
+                            document.getElementById("leaseLengthSelect"+numBundles.toString()).innerHTML = `
+                            <option value="" disabled selected hidden>Lease length</option>
+                            <option value="2">2 years</option>
+                            <option value="3">3 years</option>`
+                        }
                     }
                 }
             }
@@ -109,7 +125,7 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
                 document.getElementById("tradeInSlider").style.display = "block"
                 bundle.addTradeIn(parseFloat(formData.get("Price"))/1.2);
             }else{
-                bundle.addAddOn(formData.get("bundleAddon"), parseFloat(formData.get("Price")))
+                bundle.addAddOn(formData.get("bundleAddon"), formData.get("addonName"), parseFloat(formData.get("Price")))
             }
             // update table with new add on
             table.innerHTML = bundle.generateTable(numBundles)
@@ -135,9 +151,57 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
                 document.getElementById(key + numBundles.toString()).addEventListener("click", (e) => {
                     e.preventDefault();
                     bundle.removeSoftCost(key)
-                    bundle.updateTradeIn()
-                    table.innerHTML = bundle.generateTable(numBundles)
-                    document.getElementById("recalculatedTable").innerHTML = ""
+                    bundle.resetSoftCost()
+                    document.getElementById("row" + key + numBundles.toString()).innerHTML = ""
+                    document.getElementById("recalculatedTable" + numBundles.toString()).innerHTML = ""
+                    const a = bundle.softCostPercentage();
+                    if (a < 10){
+                        soft.innerHTML = a.toString() + "%";
+                        soft.style = "color: #000000"   
+                        disclaimer.style.display = "none"
+                        fixButton.style.display = "none"
+                    }else{
+                        soft.innerHTML = a.toString() + "%";       
+                        soft.style = "color: #FF0000"   
+                        disclaimer.style.display = "block"
+                        fixButton.style.display = "inline"
+                    }
+                }) 
+            }
+
+            if(bundle.tradeInProportion < 1 && bundle.tradeIn > 0){
+                document.getElementById("leaseTradeIn"+numBundles.toString()).addEventListener("click", (e) => {
+                    e.preventDefault();
+                    bundle.tradeIn = 0
+                    bundle.tradeInLeft = 0
+                    bundle.resetSoftCost()
+                    document.getElementById("tradeInSlider").style.display = "none"
+                    document.getElementById("rowLeaseTradeIn"+numBundles.toString()).innerHTML = ""
+                    document.getElementById("recalculatedTable" + numBundles.toString()).innerHTML = ""
+                    const a = bundle.softCostPercentage();
+                    if (a < 10){
+                        soft.innerHTML = a.toString() + "%";
+                        soft.style = "color: #000000"   
+                        disclaimer.style.display = "none"
+                        fixButton.style.display = "none"
+                    }else{
+                        soft.innerHTML = a.toString() + "%";       
+                        soft.style = "color: #FF0000"   
+                        disclaimer.style.display = "block"
+                        fixButton.style.display = "inline"
+                    }
+                }) 
+            }
+
+            if(bundle.tradeInProportion > 1 && bundle.tradeIn > 0){
+                document.getElementById("outrightTradeIn"+numBundles.toString()).addEventListener("click", (e) => {
+                    e.preventDefault();
+                    bundle.tradeIn = 0
+                    bundle.tradeInLeft = 0
+                    bundle.resetSoftCost()
+                    document.getElementById("tradeInSlider").style.display = "none"
+                    document.getElementById("rowOutrightTradeIn"+numBundles.toString()).innerHTML = ""
+                    document.getElementById("recalculatedTable" + numBundles.toString()).innerHTML = ""
                     const a = bundle.softCostPercentage();
                     if (a < 10){
                         soft.innerHTML = a.toString() + "%";
@@ -156,8 +220,6 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
 
         fixButton.addEventListener("click", (e) => {
             e.preventDefault();
-           
-            bundle.updateTradeIn()
             bundle.fixSoftCost()
             document.getElementById("recalculatedTable" +numBundles.toString()).innerHTML = bundle.generateRecalculatedTable()
             const a = bundle.softCostPercentage();
@@ -202,6 +264,7 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
         //dynamically generate event listeners
         const formTwo = document.getElementById("formTwo" + numBundles.toString());
         const formThree = document.getElementById("formThree" + numBundles.toString());
+        const depositOverview = document.getElementById("depositOverviewCard" + numBundles.toString());
         scheme.copyFormDataAcross(formTwoData, formTwo);
         scheme.copyFormDataAcross(formThreeData, formThree);
 
@@ -222,6 +285,14 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
                 col2.innerHTML = scheme.generatePriceCards(numBundles).outerHTML;
             }
 
+            radiosTwoLock[numBundles] = true
+            if(schoolType == "private"){
+                let radiosTwo = document.getElementById("leaseTypeForm"+numBundles.toString()).elements["leaseTypes"];
+                for(var i = 0, max = radiosTwo.length; i < max; i++) {
+                    radiosTwo[i].disabled = true;
+                }
+            }
+
             formThree.parentElement.style.display = "block"
         });
         
@@ -231,9 +302,82 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
             formThreeData = new FormData(formThree);
             scheme.updateSchemeWithFormTwoData(formThreeData);
 
+            if(scheme.leaseType != "finance" && (scheme.deposit > 0 && (scheme.ownership || bundle.outrightCost() > 0))){
 
-            col2.innerHTML = scheme.generatePriceCards(numBundles).outerHTML;
-            submitted[numBundles] = true;
+                document.getElementById("depositDiv"+numBundles.toString()).innerHTML = scheme.generateDepositForm(numBundles).outerHTML
+
+                let outrightCosts = {}
+                Object.assign(outrightCosts, bundle.outright)
+                if(scheme.ownership){
+                    outrightCosts["Indicative FMV"] = scheme.calculateFMV()
+                }else{
+                    outrightCosts["Indicative FMV"] = 0;
+                }
+                outrightCosts["Setup Fee"] = scheme.leaseSetup
+                outrightCosts["Initial Silverwing Fee"] = 0.80
+
+                for (const [key, value] of Object.entries(outrightCosts)) {
+                    if(value != 0){
+                        document.getElementById("deposit" + key + numBundles.toString()).addEventListener("click", (e) =>{
+                            e.preventDefault();
+                            let spentDeposit = 0
+                            if(value < scheme.deposit){
+                                scheme.deposit -= value
+                                outrightCosts[key] = 0
+                                spentDeposit = value
+                                if(key == "Indicative FMV"){
+                                    scheme.FMVsavings = value
+                                }else if(key == "Setup Fee"){
+                                    scheme.leaseSetup = 0;
+                                }else if(key == "Initial Silverwing Fee"){
+                                    scheme.initalSilverwingFeeSaving = 0.8
+                                }else{
+                                    bundle.outright[key] = 0
+                                }
+                            }else{
+                                outrightCosts[key] -= scheme.deposit
+                                if(key == "Indicative FMV"){
+                                    scheme.FMVsavings = scheme.deposit
+                                }else if(key == "Setup Fee"){
+                                    scheme.leaseSetup -= scheme.deposit;
+                                }else if(key == "Initial Silverwing Fee"){
+                                    scheme.initalSilverwingFeeSaving = scheme.deposit
+                                }else{
+                                    bundle.outright[key] -= scheme.deposit
+                                }
+                                spentDeposit = scheme.deposit
+                                scheme.deposit = 0
+                                
+                                for (const [key, value] of Object.entries(outrightCosts)) {
+                                    if(value != 0){
+                                        document.getElementById("deposit" + key + numBundles.toString()).disabled = true
+                                    }
+                                }
+                                
+                            }
+                            document.getElementById("deposit" + key + numBundles.toString() + "ExVAT").innerHTML = (outrightCosts[key]).toFixed(2)
+                            document.getElementById("deposit" + key + numBundles.toString() + "IncVAT").innerHTML = (outrightCosts[key]*1.2).toFixed(2)
+                            document.getElementById("deposit" + key + numBundles.toString() + "left").innerHTML = (spentDeposit).toFixed(2)
+                            document.getElementById("leftoverDeposit"+numBundles.toString()).innerHTML = scheme.deposit
+
+                            document.getElementById("deposit" + key + numBundles.toString()).disabled = true;
+
+                            
+                        })
+                    }
+                }
+                document.getElementById("submitDeposit"+numBundles.toString()).addEventListener("click", (e) => {
+                    e.preventDefault();
+        
+                    col2.innerHTML = scheme.generatePriceCards(numBundles).outerHTML;
+                    submitted[numBundles] = true;
+                })
+            }else{
+                col2.innerHTML = scheme.generatePriceCards(numBundles).outerHTML;
+                submitted[numBundles] = true;
+            }
+              
+            
             /*
             let PDF = document.createElement("input");
             PDF.id = "pdfButton"
@@ -257,6 +401,7 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
     });
     globalNumBundles += 1;
     submitted.push(false)
+    radiosTwoLock.push(false)
 });
 
 function generateDeviceForm(bundleNumber){
@@ -276,10 +421,19 @@ function generateDeviceForm(bundleNumber){
     cardBody.action=""
     cardBody.style.margin = "15px"
 
-    cardBody.innerHTML += "<form id=deviceForm" + bundleNumber.toString() + ` class="input-group">
-        <input type="text" class="form-control" name="manufacturer" placeholder="Manufacturer.." required>
-        <input type="text" class="form-control" name="SKU" placeholder="SKU..">
-        <input type="number" class="form-control" name="sellPrice" placeholder="Sell Price" step="0.01" required>
+    cardBody.innerHTML += "<form id=deviceForm" + bundleNumber.toString() + ` class="input-group mb-3">
+        <div class="form-floating">
+            <input type="text" id="manufacturerField" class="form-control" name="manufacturer" placeholder="Manufacturer.." required>
+            <label for="manufacturerField">Manufacturer</label>
+        </div>
+        <div class="form-floating">
+            <input type="text" id="sku" class="form-control" name="SKU" placeholder="SKU..">
+            <label for="sku">SKU</label>
+        </div>
+        <div class="form-floating">
+            <input type="number" id="priceField" class="form-control" name="sellPrice" placeholder="Sell Price" step="0.01" required>
+            <label for="priceField">price</label>
+        </div>
         <input type="submit" class="btn btn-primary" value="Add Device">
     </div></form>`
 

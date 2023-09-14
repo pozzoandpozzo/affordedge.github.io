@@ -12,7 +12,8 @@ class Scheme {
         this.outrightReserve = reserve;
         this.leaseReserve = reserve;
         this.serviceManagement = serviceManagement;
-        this.setup = setup;
+        this.outrightSetup = setup;
+        this.leaseSetup = setup;
         this.numberOfCollections = numberOfCollections || this.length*(12/this.frequency);
         this.deposit = deposit;
         this.priceCardsGenerated = false;
@@ -20,6 +21,8 @@ class Scheme {
         this.tradeIn = 0;
         this.ownership = false;
         this.lease = null;
+        this.FMVsavings = 0
+        this.initalSilverwingFeeSaving = 0
     }
 
 
@@ -47,27 +50,19 @@ class Scheme {
             this.outrightReserve = parseFloat(formData.get("reserve")) || 0;
         }
         this.serviceManagement = parseFloat(formData.get("serviceCost")) || 0;
-        this.setup = parseFloat(formData.get("setup")) || 0;
+        this.leaseSetup = parseFloat(formData.get("setup")) || 0;
+        this.outrightSetup = parseFloat(formData.get("setup")) || 0;
         this.schoolManagement = parseFloat(formData.get("schoolManagementCost")) || 0;
         this.deposit = parseFloat(formData.get("deposit")) || 0; 
+        this.originalDeposit = parseFloat(formData.get("deposit")) || 0; 
         this.numberOfCollections = parseFloat(formData.get("collections")) || this.length*(12/this.frequency);;
         this.deposit = parseFloat(formData.get("deposit")) || 0
-        if(formData.get("ownership") == "yes"){
-            this.ownership = true;
-        }
+        this.ownership = (formData.get("ownership") == "yes")
     }
 
     calculateFMV(){
-        return (this.lease.indicativeValue*this.bundle.hardCost())/100;
+        return ((this.lease.indicativeValue*this.bundle.hardCost())/100) - this.FMVsavings;
     }
-
-    calculateDeposit(){
-        if(this.ownership){
-            return this.deposit-this.calculateFMV()
-        }
-        return this.deposit;
-    }
-
 
     bundleCost(){
         return this.bundle.totalCost() + this.bundle.serviceCost() + this.bundle.outrightCost();
@@ -82,7 +77,7 @@ class Scheme {
     }
 
     outrightPrice(){
-        return this.bundleCost() + this.calculatePool() + this.calculateOutrightReserve() + this.serviceManagement + this.setup;
+        return this.bundleCost() + this.calculatePool() + this.calculateOutrightReserve() + this.serviceManagement + this.outrightSetup
     }
 
     silverwingFee(){
@@ -132,9 +127,9 @@ class Scheme {
 
     totalCost(){
         if(this.serviceTiming() == this.paymentTiming()){
-            return this.leaseCost() + this.serviceCost() + this.calculateLeasePool() + this.calculateLeaseReserve() + this.serviceManagement - (this.calculateDeposit()/((12/this.frequency)*this.length))
+            return this.leaseCost() + this.serviceCost() + this.calculateLeasePool() + this.calculateLeaseReserve() + this.serviceManagement
         }else{
-            return this.leaseCost() + this.calculateLeasePool() + this.calculateLeaseReserve() + this.serviceManagement - (this.calculateDeposit()/((12/this.frequency)*this.length))
+            return this.leaseCost() + this.calculateLeasePool() + this.calculateLeaseReserve() + this.serviceManagement - (this.calculateFMV()/((12/this.frequency)*this.length))
         }
     }
     leaseSilverwingFee(){
@@ -161,7 +156,7 @@ class Scheme {
         return ((12/this.frequency)*this.length)/this.numberOfCollections
     }
 
-    generateForm(s, numBundles){
+    generateForm(numBundles){
         const container = document.createElement("div")
         const cardOne = document.createElement("div");
         const cardTwo = document.createElement("div");
@@ -185,7 +180,7 @@ class Scheme {
         cardTitleOne.innerHTML = "Lease Options"
         cardBodyOne.classList.add("card-text")
         cardBodyOne.classList.add("card-text");
-        cardBodyOne.id = "formTwo" + s.toString()
+        cardBodyOne.id = "formTwo" + numBundles.toString()
         cardBodyOne.style.margin = "15px"
         cardBodyOne.action=""
 
@@ -199,43 +194,41 @@ class Scheme {
             <label class="btn btn-outline-primary" for="advanceOption` + numBundles.toString() + `">Advance</label>
             <input type="radio" class="btn-check" name="advanceArrears" id="arrearsOption` + numBundles.toString() + `" autocomplete="off" value="Arrears">
             <label class="btn btn-outline-primary" for="arrearsOption` + numBundles.toString() + `">Arrears</label></div>`
-        if(this.leaseType == "operating"){
-            cardBodyOne.innerHTML +=  `<select name="leaseLength" class="form-select mb-3" required>
-                <option value="" disabled selected hidden>Lease length</option>
-                <option value="2">2 years</option>
-                <option value="3">3 years</option>
-            </select>
-            <select name="frequency" class="form-select mb-3" required>
-                <option value="" disabled selected hidden>Payment Frequency</option>
-                <option value="1">Monthly</option>
-                <option value="3">Quarterly</option>
-                <option value="12">Annually</option>
-            </select>`
-        }else{
-            cardBodyOne.innerHTML +=  `<select name="leaseLength" class="form-select mb-3" required>
+
+            cardBodyOne.innerHTML +=  `<select id="leaseLengthSelect`+numBundles.toString() + `" name="leaseLength" class="form-select mb-3" required>
                 <option value="" disabled selected hidden>Lease length</option>
                 <option value="2">2 years</option>
                 <option value="3">3 years</option>
             </select>`
-            
+
+        if(this.schoolType == "private"){
             cardBodyOne.innerHTML += `<select name="frequency" class="form-select mb-3" required>
                 <option value="" disabled selected hidden>Payment Frequency</option>
                 <option value="1">Monthly</option>
                 <option value="4">Termly</option>
             </select>`
+        }else{
+            cardBodyOne.innerHTML += `<select name="frequency" class="form-select mb-3" required>
+                <option value="" disabled selected hidden>Payment Frequency</option>
+                <option value="1">Monthly</option>
+                <option value="3">Quarterly</option>
+                <option value="12">Annually</option>
+            </select>`
         }
             cardBodyOne.innerHTML += `<div class="input-group mb-3 flex-nowrap"">
-                <input name="pool" type="number" class="form-control" placeholder="Pool" step="0.01">
+                <div class="form-floating">
+                    <input name="pool" id="poolField" type="number" class="form-control" placeholder="Pool" step="0.01">
+                    <label for="poolField">Pool</label>
+                </div>
                 <span class="input-group-text">%</span>
             </div>
             <div class="actions text-center">
                 <input type="submit" class="btn btn-primary" value="Submit">
             </div>`
-
         container.appendChild(cardOne)
         container.innerHTML += "<br>"
 
-        cardBodyTwo.id = "formThree" + s.toString()
+        cardBodyTwo.id = "formThree" + numBundles.toString()
 
         cardTwo.classList.add("card");
         cardTwo.classList.add("pt-3")
@@ -250,11 +243,14 @@ class Scheme {
         cardBodyTwo.action=""
 
         let html = `<div class="input-group mb-3 flex-nowrap">
-        <input name="reserve" type="number" class="form-control" placeholder="reserve fund" step="0.01">
+        <div class="form-floating">
+            <input id="reserveField" name="reserve" type="number" class="form-control" placeholder="reserve fund" step="0.01">
+            <label for="reserveField">Reserve Fund</label>
+        </div>
         <span class="input-group-text">%</span>
         </div>
         <div class="input-group mb-3 flex-nowrap">
-            <label style="padding-right: 15px;">Apply Reserve Fund To:</label>
+            <label class="mb-3" style="padding-right: 15px;"><b>Apply Reserve Fund To:</b>
             <div class="form-check" style="padding-right: 15px;">
                 <input class="form-check-input" type="checkbox" value="yes" id="outrightReserveFund`+numBundles.toString() +`" name="outrightReserve">
                 <label class="form-check-label" for="outrightReserveFund`+numBundles.toString()+`">
@@ -268,28 +264,163 @@ class Scheme {
                     Repeat Payments
                 </label>
             </div>
+            </label>
         </div>
         <div class="input-group mb-3">
             <span class="input-group-text">£</span>
-            <input name="serviceCost" type="number" class="form-control" placeholder="Managed Service Cost.." step="0.01">
+            <div class="form-floating">
+                <input id="serviceCostField" name="serviceCost" type="number" class="form-control" placeholder="Managed Service Cost.." step="0.01">
+                <label for="serviceCostField">Managed Service Cost</label>
+            </div>
         </div>
         <div class="input-group mb-3 flex-nowrap">
             <span class="input-group-text">£</span>
-            <input name="setup" type="number" class="form-control" placeholder="Set up fee.." step="0.01">
+            <div class="form-floating">
+                <input id="setupField" name="setup" type="number" class="form-control" placeholder="Set up fee.." step="0.01">
+                <label for="setupField">Set up fee</label>
+            </div>
         </div>
         <div class="input-group mb-3 flex-nowrap">
-            <input name="collections" type="number" class="form-control" placeholder="Number of Collections.." step="1">
+            <div class="form-floating">
+                <input id="collectionField" name="collections" type="number" class="form-control" placeholder="Number of Collections.." step="1">
+                <label for="collectionField">Number of Collections</label>
+            </div>
         </div> 
-        <div class="actions text-center">
-            <input type="submit" class="btn btn-primary" value="Submit">
+        <div class="input-group mb-3 flex-nowrap">
+            <span class="input-group-text">£</span>
+            <div class="form-floating">
+                <input id="depositField" name="deposit" type="number" class="form-control" placeholder="Deposit.." step="0.01">
+                <label for="depositField">Deposit</label>
+            </div>
         </div>`
+
+        if(this.leaseType != "finance"){
+            html += `<div class="form-check">
+                <input class="form-check-input" type="checkbox" value="yes" id="flexCheckDefault`+numBundles.toString()+`" name="ownership">
+                <label class="form-check-label" for="flexCheckDefault`+numBundles.toString()+`">Parent ownership at end of lease?</label>
+            </div>`
+        }
+
+        html += `<div class="actions text-center">
+            <input type="submit" class="btn btn-primary" value="Submit">
+            </div>`
         
         cardBodyTwo.innerHTML = html
         container.appendChild(cardTwo)
+        container.innerHTML += "<br>"
 
         return container;
     }
 
+    
+    generateDepositForm(numBundles){
+        let card = document.createElement("div")
+        let cardTitle = document.createElement("h5");
+        let cardBody = document.createElement("div")
+
+        card.classList.add("card");
+        card.classList.add("pt-3")
+        card.classList.add("text-center")
+        card.appendChild(cardTitle);
+        card.appendChild(cardBody);
+
+        cardTitle.classList.add("card-title");
+        cardTitle.innerHTML = "Deposit Overview"
+
+        cardBody.classList.add("card-text")
+        cardBody.style.margin = "15px"
+        cardBody.action=""
+
+        let html = `<table class="table">
+        <thead>
+        <tr>
+            <th>
+            <b>Charge</b>
+            </th>
+            <th>
+            <b>Ex VAT</b>
+            </th>
+            <th>
+            <b>Inc VAT</b>
+            </th>
+            <th>
+            <b>Deposit Spent</b>
+            </th>
+            <th></th>
+        </tr>
+        </thead>`
+    
+        for (const [key, value] of Object.entries(this.bundle.outright)) {
+            html += `<tr>
+                <td>`+ key+
+                `</td>
+                <td>£<span id="deposit`+key+numBundles.toString()+ `ExVAT">` + (value).toFixed(2) +`</span></td>
+                <td>£<span id="deposit`+key+numBundles.toString()+`IncVAT">` + (value*1.2).toFixed(2) +`</span></td>
+                <td style="color: green">£<span id="deposit`+key+numBundles.toString() + `left">0</span></td>
+                <td>
+                <button type="button" id="deposit`+key+numBundles.toString() +`" class="btn btn-light"><svg style="color: #2979FF" xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="bi bi-plus-square" viewBox="0 0 16 16">
+                <path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/>
+                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                </svg></button>
+                </td>
+            </tr>`
+        }
+
+        if(this.ownership){
+           html += `<tr>
+           <td>Indicative FMV</td>
+           <td>£<span id="depositIndicative FMV`+numBundles.toString() +`ExVAT">` + (this.calculateFMV()).toFixed(2) +`</span></td>
+           <td>£<span id="depositIndicative FMV`+numBundles.toString() +`IncVAT">` + (this.calculateFMV()*1.2).toFixed(2) +`</span></td>
+           <td style="color: green">£<span id="depositIndicative FMV`+numBundles.toString() +`left">0</span></td>
+           <td>
+           <button type="button" id="depositIndicative FMV`+numBundles.toString() +`" class="btn btn-light"><svg style="color: #2979FF" xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="bi bi-plus-square" viewBox="0 0 16 16">
+           <path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/>
+           <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+            </svg></button>
+           </td>
+           </tr>`
+        }
+
+        if(this.leaseSetup != 0){
+           html += `<tr>
+           <td>Setup Fee</td>
+           <td>£<span id="depositSetup Fee`+numBundles.toString() +`ExVAT">` + (this.leaseSetup).toFixed(2) +`</span></td>
+           <td>£<span id="depositSetup Fee`+numBundles.toString() +`IncVAT">` + (this.leaseSetup*1.2).toFixed(2) +`</span></td>
+           <td style="color: green">£<span id="depositSetup Fee`+numBundles.toString() +`left">0</span></td>
+           <td>
+           <button type="button" id="depositSetup Fee`+numBundles.toString() +`" class="btn btn-light"><svg style="color: #2979FF" xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="bi bi-plus-square" viewBox="0 0 16 16">
+           <path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/>
+           <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+            </svg></button>
+           </td>
+           </tr>`
+        }
+
+        html += `<tr>
+                <td>Initial Silverwing Fee</td>
+                <td>£<span id="depositInitial Silverwing Fee`+numBundles.toString() +`ExVAT">`+ (0.8 - this.initalSilverwingFeeSaving).toFixed(2) + `</span></td>
+                <td>£<span id="depositInitial Silverwing Fee`+numBundles.toString() +`IncVAT">`+ ((0.8 - this.initalSilverwingFeeSaving)*1.2).toFixed(2) + `</span></td>
+                <td style="color: green">£<span id="depositInitial Silverwing Fee`+numBundles.toString() +`left">0</span></td>
+                <td>
+                <button type="button" id="depositInitial Silverwing Fee`+numBundles.toString() +`" class="btn btn-light"><svg style="color: #2979FF" xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="bi bi-plus-square" viewBox="0 0 16 16">
+                <path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/>
+                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                </svg></button>
+                </td>
+                </tr></table>`
+
+
+                
+        if(this.deposit != 0){
+            html += `<h6 style="color: green">Deposit leftover: £<span id="leftoverDeposit`+numBundles.toString()+`">`+ this.deposit + `</span></h6>`
+        }
+        html += `<div class="actions text-center">
+            <input id="submitDeposit`+numBundles.toString() +`"type="submit" class="btn btn-primary" value="Submit">
+            </div>`
+
+        cardBody.innerHTML = html;
+        return card
+    }
 
     copyFormDataAcross(formData, newForm){
         if(formData != null){
@@ -307,97 +438,26 @@ class Scheme {
     generatePriceCards(numBundles){
         this.priceCardsGenerated = true;
         const container = document.createElement("div")
-        let rows = [document.createElement("div"), document.createElement("div"), document.createElement("div"), document.createElement("div")];
+        let rows = [document.createElement("div"), document.createElement("div"), document.createElement("div")];
         rows[0].classList.add("row");
         rows[0].classList.add("gx-3");
         rows[1].classList.add("row");
         rows[1].classList.add("gx-3");
         rows[2].classList.add("row");
         rows[2].classList.add("gx-3");
-        rows[3].classList.add("row");
-        rows[3].classList.add("gx-3");
 
 
-        container.appendChild(rows[3])
         container.appendChild(rows[1])
         container.appendChild(rows[0])
         container.appendChild(rows[2])
         // calculate all numbers 
-        
-        this.lease = new Lease(this.length)
+    
         
         let leaseString = ""
         if(leaseType == "operating"){
             leaseString = "Operating Lease";
         }else{
             leaseString = "Finance Lease"
-        }
-
-
-        if(this.ownership){
-            // Ownership Card
-            const ownershipCol = document.createElement("div");
-            rows[3].appendChild(ownershipCol);
-            const ownershipCard = document.createElement("div");
-            let cardTitle = document.createElement("h6");
-            let cardBody = document.createElement("p");
-
-            cardTitle.classList.add("card-title")
-            cardBody.classList.add("card-text")
-            cardBody.style.margin = "15px";
-
-            ownershipCol.classList.add("col")
-            ownershipCol.appendChild(ownershipCard)
-
-            ownershipCard.classList.add("card");
-            ownershipCard.classList.add("text-center")
-            ownershipCard.classList.add("pt-3")
-            ownershipCard.appendChild(cardTitle);
-            ownershipCard.appendChild(cardBody);
-                
-            cardTitle.innerHTML = "Ownership Overview";
-
-            let html = `<table class="table">
-            <thead>
-            <tr>
-            </tr>
-            </thead>
-            <tbody>
-            <tr>
-                <td>
-                   Indicative FMV  
-                </td>
-                <td>£`+ this.calculateFMV().toFixed(2) +
-                `</td
-            </tr>
-            <tr>
-            <td>
-               Deposit
-            </td>
-            <td>£`+ this.deposit.toFixed(2) +
-            `</td
-            </tr>
-            `
-        
-            if(this.calculateDeposit() < 0){
-                html += `<tr>
-                <td style="border-bottom: 2px solid black;border-top: 2px solid black;"><b>
-                   Remainder left to pay before ownership
-                </b></td>
-                <td style="color: red; border-bottom: 2px solid black;border-top: 2px solid black;">£`+ (this.calculateDeposit()*-1).toFixed(2) +
-                `</td
-                </tr> </tbody>
-                </table>`
-            }else{
-                html += `<tr><td style="border-bottom: 2px solid black;border-top: 2px solid black;"><b>
-                Leftover deposit after ownership
-                </b></td>
-                <td style="color: green; border-bottom: 2px solid black;border-top: 2px solid black;">£`+ (this.calculateDeposit()).toFixed(2) +
-                `</td
-                </tr> </tbody>
-                </table>`
-            }
-            cardBody.innerHTML = html;
         }
 
         //outright summary
@@ -503,7 +563,7 @@ class Scheme {
             <td>` + this.bundle.deviceName +
             `</td>
             <td>
-            Edge Computers
+            Supplier
             </td>
             <td>£`+ this.bundle.hard[this.bundle.deviceName].toFixed(2) +
             `</td>
@@ -517,7 +577,7 @@ class Scheme {
                         <td>`+ key+
                         `</td>
                         <td>
-                        Edge Computers
+                        Supplier
                         </td>
                         <td>£`+value.toFixed(2)+`</td>
                         <td>£`+(value*1.2).toFixed(2)+`</td>
@@ -530,7 +590,7 @@ class Scheme {
                     <td>`+ key+
                     `</td>
                     <td>
-                    Edge Computers
+                    Supplier
                     </td>
                     <td>£`+value.toFixed(2)+`</td>
                     <td>£`+(value*1.2).toFixed(2)+`</td>
@@ -542,7 +602,7 @@ class Scheme {
                     <td>`+ key+
                     `</td>
                     <td>
-                    Edge Computers
+                    Supplier
                     </td>
                     <td>£`+value.toFixed(2)+`</td>
                     <td>£`+(value*1.2).toFixed(2)+`</td>
@@ -554,7 +614,7 @@ class Scheme {
                         Pool
                     </td>
                     <td>
-                        Edge Computers
+                        Supplier
                     </td>
                     <td>£`+ this.calculatePool().toFixed(2) +
                     `</td>
@@ -598,7 +658,7 @@ class Scheme {
                     Managed Service Cost
                 </td>
                 <td>
-                    Edge Computers
+                    Supplier
                 </td>
                 <td>£`+ (this.serviceManagement).toFixed(2) +
                 `</td>
@@ -607,17 +667,17 @@ class Scheme {
             </tr>`
             }
 
-            if(this.setup != 0){
+            if(this.outrightSetup != 0){
                 table += `<tr>
                 <td>
                     Set Up Fee
                 </td>
                 <td>
-                    Edge Computers
+                    Supplier
                 </td>
-                <td>£`+ (this.setup).toFixed(2) +
+                <td>£`+ (this.outrightSetup).toFixed(2) +
                 `</td>
-                <td>£`+(this.setup*1.2).toFixed(2) +
+                <td>£`+(this.outrightSetup*1.2).toFixed(2) +
                 `</td>
             </tr>`
             }
@@ -699,7 +759,7 @@ class Scheme {
             <td>` + this.bundle.deviceName +
             `</td>
             <td>
-                Edge Computers
+                Supplier
             </td>
             <td>
                 Fixed
@@ -716,7 +776,7 @@ class Scheme {
                         <td>`+ key+
                             `</td>
                         <td>
-                            Edge Computers
+                            Supplier
                         </td>
                         <td>
                             Fixed
@@ -733,7 +793,7 @@ class Scheme {
                         <td>`+ key+
                         ` (Service, <b>paid monthly</b>)</td>
                         <td>
-                            Edge Computers
+                           Supplier
                         </td>
                         <td>
                             Fixed
@@ -748,7 +808,7 @@ class Scheme {
                         <td>`+ key+
                         ` (Service)</td>
                         <td>
-                            Edge Computers
+                            Supplier
                         </td>
                         <td>
                             Fixed
@@ -763,7 +823,7 @@ class Scheme {
                 table += `<tr>
                 <td>Outright</td>
                 <td>
-                    Edge Computers
+                    Supplier
                 </td>
                 <td>
                     Fixed
@@ -779,7 +839,7 @@ class Scheme {
                         Pool
                     </td>
                     <td>
-                        Siemens/Edge Computers
+                        Siemens/Supplier
                     </td>
                     <td>
                         Fixed
@@ -798,7 +858,7 @@ class Scheme {
                         Managed Service Cost
                     </td>
                     <td>
-                        Edge Computers
+                       Supplier
                     </td>
                     <td>
                         Contingent
@@ -894,21 +954,8 @@ class Scheme {
             }
             
 
-            if(this.calculateDeposit() > 0){
-                table += `<tr>
-                <td>Deposit</td>
-                <td>
-                   School
-                </td>
-                <td>
-                    -
-                </td>
-                <td style="color:green">-£` + (this.calculateDeposit()/((12/this.frequency)*this.length)).toFixed(2) +`</td>
-                <td style="color:green">-£` + ((this.calculateDeposit()*1.2)/((12/this.frequency)*this.length)).toFixed(2) +`</td>
-                </tr>`
-            }
     
-            if(this.calculateDeposit() < 0){
+            if(this.calculateFMV() > 0 && this.ownership && this.leaseType != "finance"){
                 table += `<tr>
                 <td>Ownership Uplift</td>
                 <td>
@@ -917,8 +964,8 @@ class Scheme {
                 <td>
                     -
                 </td>
-                <td>£` + ((this.calculateDeposit()*-1)/((12/this.frequency)*this.length)).toFixed(2) +`</td>
-                <td>£` +  ((this.calculateDeposit()*-1*1.2)/((12/this.frequency)*this.length)).toFixed(2) +`</td>
+                <td>£` + ((this.calculateFMV())/((12/this.frequency)*this.length)).toFixed(2) +`</td>
+                <td>£` +  ((this.calculateFMV()*1.2)/((12/this.frequency)*this.length)).toFixed(2) +`</td>
                 </tr>`
             }
             table += `<tr>
@@ -963,8 +1010,8 @@ class Scheme {
                 <td>
                    Outright
                 </td>
-                <td>£` + (this.deposit).toFixed(2) +`</td>
-                <td>£` + (this.deposit*1.2).toFixed(2) +`</td>
+                <td>£` + (this.originalDeposit).toFixed(2) +`</td>
+                <td>£` + (this.originalDeposit*1.2).toFixed(2) +`</td>
                 </tr>`
         }
         for (const [key, value] of Object.entries(this.bundle.outright)) {
@@ -972,7 +1019,7 @@ class Scheme {
                 <td>`+ key+
                 `</td>
                 <td>
-                    Edge Computers
+                    Supplier
                 </td>
                 <td>
                     Outright
@@ -981,6 +1028,21 @@ class Scheme {
                 <td>£` + (value*1.2).toFixed(2) +`</td>
             </tr>`
         }
+
+        if(this.leaseSetup != 0){
+            table += `<tr>
+            <td>
+                Set Up Fee
+            </td>
+            <td>
+                Supplier
+            </td>
+            <td>£`+ (this.leaseSetup).toFixed(2) +
+            `</td>
+            <td>£`+(this.leaseSetup*1.2).toFixed(2) +
+            `</td>
+        </tr>`
+        }
         table +=` <tr><td>Initial Silverwing Fee</td>
                 <td>
                     Silverwing
@@ -988,8 +1050,8 @@ class Scheme {
                 <td>
                 Outright
                 </td>
-                <td>£0.80</td>
-                <td>£0.96</td>
+                <td>£`+ (0.8 - this.initalSilverwingFeeSaving).toFixed(2) + `</td>
+                <td>£`+ ((0.8 - this.initalSilverwingFeeSaving)*1.2).toFixed(2) + `</td>
                 </tr>
                 <tr>
                 <td style="border-bottom: 2px solid black;border-top: 2px solid black;">
@@ -1010,12 +1072,11 @@ class Scheme {
         table += `</tbody>
         </table>`
 
-        let disclaimer = "<p>Lease rates are subject to credit and variaible until drawdown. Lease rates are based on a pre-inception variable of X, at cost of funds of Y at " + this.lease.date+ ".</p>"
+        let disclaimer = "<p>Lease rates are subject to credit and variaible until drawdown. Lease rates are based on a pre-inception variable, on " + this.lease.date+ ".</p>"
 
 
         cardBody.innerHTML = table + disclaimer;
 
-    rows[3].outerHTML += "<br>"
     rows[0].outerHTML += "<br>"
     rows[1].outerHTML += "<br>"
  

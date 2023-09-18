@@ -412,7 +412,7 @@ class Scheme {
 
                 
         if(this.deposit != 0){
-            html += `<h6 style="color: green">Deposit leftover: £<span id="leftoverDeposit`+numBundles.toString()+`">`+ this.deposit + `</span></h6>`
+            html += `<h6 style="color: green">Deposit leftover per unit (Excluding VAT): £<span id="leftoverDeposit`+numBundles.toString()+`">`+ this.deposit + `</span></h6>`
         }
         html += `<div class="actions text-center">
             <input id="submitDeposit`+numBundles.toString() +`"type="submit" class="btn btn-primary" value="Submit">
@@ -1001,7 +1001,7 @@ class Scheme {
             </tr>`
             }
 
-        if(this.deposit != 0){
+        if(this.originalDeposit != 0){
             table += `<tr>
                 <td>Deposit</td>
                 <td>

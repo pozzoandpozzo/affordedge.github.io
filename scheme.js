@@ -1181,7 +1181,7 @@ class Scheme {
     graphCardTitle.innerHTML = "Graph"
 
     graphCardBody.innerHTML = `<svg id="graphData`+numBundles.toString()+`"width="960" height="500">`
-    rows[3].appendChild(graphCard)
+    //rows[3].appendChild(graphCard)
     
 
     return container;

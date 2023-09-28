@@ -23,6 +23,8 @@ class Scheme {
         this.lease = null;
         this.FMVsavings = 0
         this.initalSilverwingFeeSaving = 0
+        this.discount = 0
+        this.percentageReceiving = 0
     }
 
 
@@ -58,12 +60,20 @@ class Scheme {
         this.numberOfCollections = parseFloat(formData.get("collections")) || this.length*(12/this.frequency);;
         this.deposit = parseFloat(formData.get("deposit")) || 0
         this.ownership = (formData.get("ownership") == "yes")
+        this.discount = formData.get("subsidize") || 0
+        this.percentageReceiving = formData.get("discountPercent") || 0
     }
 
     calculateFMV(){
         return ((this.lease.indicativeValue*this.bundle.hardCost())/100) - this.FMVsavings;
     }
 
+
+    calculateDiscountCost(){
+        let discountRatio = 100/(this.percentageReceiving)
+
+        return this.discount/discountRatio
+    }
     bundleCost(){
         return this.bundle.totalCost() + this.bundle.serviceCost() + this.bundle.outrightCost();
     }
@@ -156,6 +166,31 @@ class Scheme {
         return ((12/this.frequency)*this.length)/this.numberOfCollections
     }
 
+    generateStackedJSON(){
+        let values = [this.leaseCost(), this.serviceCost(), this.leaseSilverwingFee(), this.calculateLeasePool(), this.calculateLeaseReserve(), (this.calculateFMV())/((12/this.frequency)*this.length), this.bundle.outrightCost(), this.originalDeposit]
+        let months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+        let array = []
+        for(let i = 0; i < (12*this.length); i+=this.frequency){
+            array.push(
+                {
+                    "Month": months[i%12],
+                    "Lease": values[0],
+                    "Services": values[1],
+                    "Collections": values[2],
+                    "Pool": values[3],
+                    "Reserve": values[4],
+                    "Ownership": values[5],
+                    "Outright": 0,
+                    "Deposit": 0           
+                }
+            )
+        }
+        array[0]["Outright"] = values[6]
+        array[0]["Deposit"] = values[7]
+        array[0]["Collections"] += 0.8
+    
+        return array
+    }
     generateForm(numBundles){
         const container = document.createElement("div")
         const cardOne = document.createElement("div");
@@ -284,6 +319,16 @@ class Scheme {
             <div class="form-floating">
                 <input id="collectionField" name="collections" type="number" class="form-control" placeholder="Number of Collections.." step="1">
                 <label for="collectionField">Number of Collections</label>
+            </div>
+        </div> 
+        <div class="input-group mb-3 flex-nowrap">
+            <div class="form-floating">
+                <input id="subsideField" name="subsidize" type="number" class="form-control" placeholder="Subsidized Discount.." step="0.01">
+                <label for="subsideField">Subsidized Discount</label>
+            </div>
+            <div class="form-floating">
+                <input id="discountPercentField" name="discountPercent" type="number" class="form-control" placeholder="Percentage Receiving Discount.." step="0  .01">
+                <label for="discountPercentField">Percentage Receiving Discount..</label>
             </div>
         </div> 
         <div class="input-group mb-3 flex-nowrap">
@@ -426,7 +471,7 @@ class Scheme {
         if(formData != null){
             for(let i = 0; i < newForm.elements.length-1; i++){
                 if(newForm.elements[i].type == "radio"){
-                    newForm.elements[i].checked = (formData.get(newForm.elements[i].name) != null)
+                    newForm.elements[i].checked = (formData.get(newForm.elements[i].name) == null)
                 }else if(newForm.elements[i].type == "checkbox"){
                     newForm.elements[i].checked = (formData.get(newForm.elements[i].name) == "yes")
                 }else{
@@ -438,18 +483,22 @@ class Scheme {
     generatePriceCards(numBundles){
         this.priceCardsGenerated = true;
         const container = document.createElement("div")
-        let rows = [document.createElement("div"), document.createElement("div"), document.createElement("div")];
+        let rows = [document.createElement("div"), document.createElement("div"), document.createElement("div"), document.createElement("div")];
         rows[0].classList.add("row");
         rows[0].classList.add("gx-3");
         rows[1].classList.add("row");
         rows[1].classList.add("gx-3");
         rows[2].classList.add("row");
         rows[2].classList.add("gx-3");
+        rows[3].classList.add("row");
+        rows[3].classList.add("gx-3");
+
 
 
         container.appendChild(rows[1])
         container.appendChild(rows[0])
         container.appendChild(rows[2])
+        container.appendChild(rows[3])
         // calculate all numbers 
     
         
@@ -471,20 +520,30 @@ class Scheme {
 
         rows[1].appendChild(outrightCol)
 
-        outrightCard.innerHTML = `<div class="card-header">
+        let html = `<div class="card-header">
             <h4 class="my-0 font-weight-normal">Outright Payment</h4>
         </div>
         <div class="card-body">
             <h1 class="card-title pricing-card-title">£`+ this.finalPrice().toFixed(2) +` <small class="text-muted">parental cost</small></h1>
             <ul class="list-unstyled mt-3 mb-4">
             <li>One Off Payment</li>
-            <li>Excluding VAT</li>
-            <li style="color: green">Trade in saving per unit: £`+ (this.bundle.tradeIn * (1-this.bundle.tradeInProportion)).toFixed(2) +`</li>
-            </ul>
+            <li>Excluding VAT</li>`
+            
+        if(this.discount != 0 && this.percentageReceiving != 0){
+            html +=  `<li><b>£`+ (this.finalPrice()*(100-this.discount)/100).toFixed(2) + `</b><small class="text-muted">/ collection</small> for discounted students</li>`
+        }
+
+        if(this.bundle.tradeIn * (1-this.bundle.tradeInProportion) != 0){
+            html += `<li style="color: green">Trade in saving per unit: £`+ (this.bundle.tradeIn * (1-this.bundle.tradeInProportion)).toFixed(2) +`</li>`
+        }
+
+        html += `</ul>
             <button class="btn btn-lg btn-block btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#outrightOverview`+numBundles.toString()+`" data-parent=".multi-collapse" aria-expanded="false" aria-controls="collapseExample">
                 See Breakdown
             </button>
         </div>`
+
+        outrightCard.innerHTML = html
 
         outrightCol.appendChild(outrightCard)
 
@@ -499,22 +558,28 @@ class Scheme {
         leaseCol.classList.add("col")
         rows[1].appendChild(leaseCol)
 
-        leaseCard.innerHTML =  `<div class="card-header">
+        html =  `<div class="card-header">
                 <h4 class="my-0 font-weight-normal">Repeat Payment</h4>
             </div>
             <div class="card-body">
                 <h1 class="card-title pricing-card-title">£`+ (this.finalLeasePrice()*this.collectionMultiplier()).toFixed(2) + ` <small class="text-muted">/ collection</small></h1>
                 <ul class="list-unstyled mt-3 mb-4">
                 <li>This is a `+ this.length.toString() + ` year ` + this.leaseType + ` lease</li>
-                <li>Excluding VAT</li>
-                <li style="color: green">Trade in saving per collection: £`+ (this.bundle.tradeIn * (1-this.bundle.tradeInProportion) * this.leaseRate() * this.collectionMultiplier()).toFixed(2) +`</li>
-                </ul>
+                <li>Excluding VAT</li>`
+        if(this.discount != 0 && this.percentageReceiving != 0){
+            html += `<li><b>£`+ (this.finalLeasePrice()*this.collectionMultiplier()*(100-this.discount)/100).toFixed(2) + ` </b><small class="text-muted">/ collection</small> for discounted students</li>`
+        }
+        if(this.bundle.tradeIn * (1-this.bundle.tradeInProportion) != 0){
+            html += `<li style="color: green">Trade in saving per collection: £`+ (this.bundle.tradeIn * (1-this.bundle.tradeInProportion) * this.leaseRate() * this.collectionMultiplier()).toFixed(2) +`</li>`
+        }
+        html += `</ul>
                 <button class="btn btn-lg btn-block btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#leaseOverview`+numBundles.toString()+`" data-parent=".multi-collapse" aria-expanded="false" aria-controls="collapseExample">
                     See Breakdown
                 </button>
-            </div>`
+                </div>`
+        leaseCard.innerHTML = html
 
-            leaseCol.appendChild(leaseCard)
+        leaseCol.appendChild(leaseCard)
 
 
 
@@ -522,7 +587,7 @@ class Scheme {
         const overviewCol = document.createElement("div");
         rows[0].appendChild(overviewCol);
         const overviewCard = document.createElement("div");
-        let cardTitle = document.createElement("h6");
+        let cardTitle = document.createElement("h5");
         let cardBody = document.createElement("p");
 
         cardTitle.classList.add("card-title")
@@ -623,6 +688,21 @@ class Scheme {
                 </tr>`
             }
 
+            if(this.discount != 0 && this.percentageReceiving != 0){
+                table += `<tr>
+                <td>
+                    Cost of discount to school
+                </td>
+                <td>
+                    School
+                </td>
+                <td>£`+ (this.finalPrice()*this.calculateDiscountCost()/100).toFixed(2) +
+                `</td>
+                <td>£`+ (this.finalPrice()*this.calculateDiscountCost()*1.2/100).toFixed(2) +
+                `</td>
+            </tr>`
+            }
+
             table +=
             `<tr>
                 <td style="border-bottom: 2px solid black;border-top: 2px solid black;">
@@ -631,9 +711,9 @@ class Scheme {
                 <td style="border-bottom: 2px solid black;border-top: 2px solid black;">
                 -
                 </td>
-                <td style="border-bottom: 2px solid black;border-top: 2px solid black;"><b>£`+ (this.bundleCost() + this.calculatePool()).toFixed(2) +
+                <td style="border-bottom: 2px solid black;border-top: 2px solid black;"><b>£`+ (this.bundleCost() + this.calculatePool() + (this.finalPrice()*this.calculateDiscountCost()/100)).toFixed(2) +
                 `</b></td>
-                <td style="border-bottom: 2px solid black;border-top: 2px solid black;"><b>£`+ ((this.bundleCost() + this.calculatePool())*1.2).toFixed(2) +
+                <td style="border-bottom: 2px solid black;border-top: 2px solid black;"><b>£`+ ((this.bundleCost() + this.calculatePool() + (this.finalPrice()*this.calculateDiscountCost()/100))*1.2).toFixed(2) +
                 `</b></td>
             </tr>`
 
@@ -818,20 +898,6 @@ class Scheme {
                     </tr>`
                 }
             }
-        
-            if(this.bundle.outrightCost() != 0){
-                table += `<tr>
-                <td>Outright</td>
-                <td>
-                    Supplier
-                </td>
-                <td>
-                    Fixed
-                </td>
-                <td>£` + this.bundle.outrightCost().toFixed(2) +`</td>
-                <td>£` + (this.bundle.outrightCost()*1.2).toFixed(2) +`</td>
-            </tr>`
-            }
 
             if(this.calculateLeasePool() != 0){
                 table += `<tr>
@@ -870,6 +936,24 @@ class Scheme {
                 </tr>`
             }
 
+            if(this.discount != 0 && this.percentageReceiving != 0){
+                table += `<tr>
+                <td>
+                    Cost of discount to school
+                </td>
+                <td>
+                    School
+                </td>
+                <td>
+                    Fixed
+                </td>
+                <td>£`+ (this.finalLeasePrice()*this.calculateDiscountCost()/100).toFixed(2) +
+                `</td>
+                <td>£`+ (this.finalLeasePrice()*this.calculateDiscountCost()*1.2/100).toFixed(2) +
+                `</td>
+            </tr>`
+            }
+
             table += `<tr>
             <td>
                 Silverwing Collection Charge
@@ -897,9 +981,9 @@ class Scheme {
                     <td style="border-bottom: 2px solid black;border-top: 2px solid black;">
                         -
                     </td>
-                    <td style="border-bottom: 2px solid black;border-top: 2px solid black;"><b>£`+ (this.leaseCost() + this.serviceCost() + this.calculateLeasePool() + this.serviceManagement + this.leaseSilverwingFee()).toFixed(2) +
+                    <td style="border-bottom: 2px solid black;border-top: 2px solid black;"><b>£`+ (this.leaseCost() + this.serviceCost() + this.calculateLeasePool() + this.serviceManagement + this.leaseSilverwingFee()+ (this.finalLeasePrice()*this.calculateDiscountCost()/100)).toFixed(2) +
                     `</b></td>
-                    <td style="border-bottom: 2px solid black;border-top: 2px solid black;"><b>£`+ ((this.leaseCost() + this.serviceCost() + this.calculateLeasePool() + this.serviceManagement + this.leaseSilverwingFee())*1.2).toFixed(2) +
+                    <td style="border-bottom: 2px solid black;border-top: 2px solid black;"><b>£`+ ((this.leaseCost() + this.serviceCost() + this.calculateLeasePool() + this.serviceManagement + this.leaseSilverwingFee()+(this.finalLeasePrice()*this.calculateDiscountCost()/100))*1.2).toFixed(2) +
                     `</b></td>
                 </tr>`
             }else{
@@ -1072,7 +1156,7 @@ class Scheme {
         table += `</tbody>
         </table>`
 
-        let disclaimer = "<p>Lease rates are subject to credit and variaible until drawdown. Lease rates are based on a pre-inception variable, on " + this.lease.date+ ".</p>"
+        let disclaimer = "<p>Lease rates are subject to credit and variable until drawdown. Lease rates are based on a pre-inception variable, on " + this.lease.date+ ".</p>"
 
 
         cardBody.innerHTML = table + disclaimer;
@@ -1080,56 +1164,26 @@ class Scheme {
     rows[0].outerHTML += "<br>"
     rows[1].outerHTML += "<br>"
  
-    /*const netCard = document.createElement("div")
-    const netCardTitle = document.createElement("div")
-    const netCardBody = document.createElement("p")
-    netCard.classList.add("card")
-    netCard.classList.add("text-center")
-    netCard.classList.add("pt-3")
+ 
+    const graphCard = document.createElement("div")
+    const graphCardTitle = document.createElement("h5")
+    const graphCardBody = document.createElement("div")
+    graphCard.classList.add("card")
+    graphCard.classList.add("text-center")
+    graphCard.classList.add("pt-3")
 
-    netCardTitle.classList.add("card-title")
-    netCardTitle.classList.add("card-text")
+    graphCardTitle.classList.add("card-title")
+    graphCardTitle.classList.add("card-text")
 
-    netCard.appendChild(netCardTitle);
-    netCard.appendChild(netCardBody);
+    graphCard.appendChild(graphCardTitle);
+    graphCard.appendChild(graphCardBody);
 
-    netCardTitle.innerHTML = "Total Cost To School Over All Units"
-    netCardBody.innerHTML = `<table class="table">
-    <thead>
-        <tr>
-            <th>
-            <b>Charge</b>
-            </th>
-            <th>
-            <b>Ex VAT</b>
-            </th>
-            <th>
-            <b>Inc VAT</b>
-            </th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-                Total School Cost
-            </td>
-            <td>£`+ ((this.finalPrice())*this.numberOfCollections*this.numberOfUnits*(100+this.pool)/100).toFixed(2) +
-                `</td>
-                <td>£`+(this.finalPrice()*this.numberOfCollections*this.numberOfUnits*((100+this.pool)/100)*1.2).toFixed(2) +
-                `</td>
-        </tr>
-        <tr>
-            <td>
-            Trade In Saving
-            </td>
-            <td style="color: green">-£`+ (this.bundle.tradeIn*this.numberOfUnits*(100+this.pool)/100).toFixed(2) +
-            `</td>
-            <td style="color: green">-£`+(this.bundle.tradeIn*this.numberOfUnits*1.2*(100+this.pool)/100).toFixed(2) +
-            `</td>
-        </tr>   
-    </tr>`
+    graphCardTitle.innerHTML = "Graph"
 
-    rows[2].appendChild(netCard) */
+    graphCardBody.innerHTML = `<svg id="graphData`+numBundles.toString()+`"width="960" height="500">`
+    rows[3].appendChild(graphCard)
+    
+
     return container;
 }
 

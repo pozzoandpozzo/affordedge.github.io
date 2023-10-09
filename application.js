@@ -364,7 +364,7 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
                             document.getElementById("deposit" + key + numBundles.toString() + "ExVAT").innerHTML = (outrightCosts[key]).toFixed(2)
                             document.getElementById("deposit" + key + numBundles.toString() + "IncVAT").innerHTML = (outrightCosts[key]*1.2).toFixed(2)
                             document.getElementById("deposit" + key + numBundles.toString() + "left").innerHTML = (spentDeposit).toFixed(2)
-                            document.getElementById("leftoverDeposit"+numBundles.toString()).innerHTML = scheme.deposit
+                            document.getElementById("leftoverDeposit"+numBundles.toString()).innerHTML = scheme.deposit.toFixed(2)
 
                             document.getElementById("deposit" + key + numBundles.toString()).disabled = true;
 

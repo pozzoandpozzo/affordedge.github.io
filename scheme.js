@@ -65,7 +65,7 @@ class Scheme {
     }
 
     calculateFMV(){
-        return ((this.lease.indicativeValue*this.bundle.hardCost())/100) - this.FMVsavings;
+        return ((this.lease.indicativeValue*this.bundle.hardCost())/100) - this.FMVsavings;    
     }
 
 
@@ -137,9 +137,9 @@ class Scheme {
 
     totalCost(){
         if(this.serviceTiming() == this.paymentTiming()){
-            return this.leaseCost() + this.serviceCost() + this.calculateLeasePool() + this.calculateLeaseReserve() + this.serviceManagement
+            return this.leaseCost() + this.serviceCost() + this.calculateLeasePool() + this.calculateLeaseReserve() + this.serviceManagement + (this.calculateFMV()/((12/this.frequency)*this.length))  
         }else{
-            return this.leaseCost() + this.calculateLeasePool() + this.calculateLeaseReserve() + this.serviceManagement - (this.calculateFMV()/((12/this.frequency)*this.length))
+            return this.leaseCost() + this.calculateLeasePool() + this.calculateLeaseReserve() + this.serviceManagement + (this.calculateFMV()/((12/this.frequency)*this.length))
         }
     }
     leaseSilverwingFee(){
@@ -167,7 +167,7 @@ class Scheme {
     }
 
     generateStackedJSON(){
-        let values = [this.leaseCost(), this.serviceCost(), this.leaseSilverwingFee(), this.calculateLeasePool(), this.calculateLeaseReserve(), (this.calculateFMV())/((12/this.frequency)*this.length), this.bundle.outrightCost(), this.originalDeposit]
+        let values = [this.leaseCost(), this.serviceCost(), this.leaseSilverwingFee(), this.calculateLeasePool(), this.calculateLeaseReserve(), (this.calculateFMV())/((12/this.frequency)*this.length), this.bundle.outrightLeaseCost(), this.originalDeposit]
         let months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
         let array = []
         for(let i = 0; i < (12*this.length); i+=this.frequency){
@@ -189,6 +189,30 @@ class Scheme {
         array[0]["Deposit"] = values[7]
         array[0]["Collections"] += 0.8
     
+        return array
+    }
+
+    generateAreaJSON(){
+        let values = [this.leaseCost(), this.serviceCost(), this.leaseSilverwingFee(), this.calculateLeasePool(), this.calculateLeaseReserve(), (this.calculateFMV())/((12/this.frequency)*this.length), this.bundle.outrightCost(), this.originalDeposit]
+        let months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+        let array = []
+        let m = 1
+        for(let i = 0; i < (12*this.length); i+=this.frequency){
+            array.push(
+                {
+                    "Month": months[i%12],
+                    "Lease": values[0]*m,
+                    "Services": values[1]*m,
+                    "Collections": (values[2]*m)+0.80,
+                    "Pool": values[3]*m,
+                    "Reserve": values[4]*m,
+                    "Ownership": values[5]*m,
+                    "Outright": values[6],
+                    "Deposit": values[7]           
+                }
+            )
+            m += 1;
+        }
         return array
     }
     generateForm(numBundles){
@@ -457,7 +481,7 @@ class Scheme {
 
                 
         if(this.deposit != 0){
-            html += `<h6 style="color: green">Deposit leftover per unit (Excluding VAT): £<span id="leftoverDeposit`+numBundles.toString()+`">`+ this.deposit + `</span></h6>`
+            html += `<h6 style="color: green">Deposit leftover per unit (Excluding VAT): £<span id="leftoverDeposit`+numBundles.toString()+`">`+ this.deposit.toFixed(2) + `</span></h6>`
         }
         html += `<div class="actions text-center">
             <input id="submitDeposit`+numBundles.toString() +`"type="submit" class="btn btn-primary" value="Submit">
@@ -1098,7 +1122,7 @@ class Scheme {
                 <td>£` + (this.originalDeposit*1.2).toFixed(2) +`</td>
                 </tr>`
         }
-        for (const [key, value] of Object.entries(this.bundle.outright)) {
+        for (const [key, value] of Object.entries(this.bundle.outrightLease)) {
             table += `<tr>
                 <td>`+ key+
                 `</td>
@@ -1147,9 +1171,9 @@ class Scheme {
                 <td style="border-bottom: 2px solid black;border-top: 2px solid black;">
                     -
                 </td>
-                <td style="border-bottom: 2px solid black;border-top: 2px solid black;"><b>£`+ (this.bundle.outrightCost()+this.deposit+0.8).toFixed(2) +
+                <td style="border-bottom: 2px solid black;border-top: 2px solid black;"><b>£`+ (this.bundle.outrightLeaseCost()+this.deposit+0.8).toFixed(2) +
                 `</b></td>
-                <td style="border-bottom: 2px solid black;border-top: 2px solid black;"><b>£`+((this.bundle.outrightCost()+ this.deposit+0.8)*1.2).toFixed(2) +
+                <td style="border-bottom: 2px solid black;border-top: 2px solid black;"><b>£`+((this.bundle.outrightLeaseCost()+ this.deposit+0.8)*1.2).toFixed(2) +
                 `</b></td>
                 </tr>`
             
@@ -1180,7 +1204,8 @@ class Scheme {
 
     graphCardTitle.innerHTML = "Graph"
 
-    graphCardBody.innerHTML = `<svg id="graphData`+numBundles.toString()+`"width="960" height="500">`
+    graphCardBody.innerHTML = `<svg id="barGraphData`+numBundles.toString()+`"width="960" height="500">
+                               <svg id="areaGraphData`+numBundles.toString()+`"width="960" height="500">`
     //rows[3].appendChild(graphCard)
     
 

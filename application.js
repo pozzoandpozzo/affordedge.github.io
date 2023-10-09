@@ -146,6 +146,8 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
 
             if(submitted[numBundles]){
                 col2.innerHTML = scheme.generatePriceCards(numBundles).outerHTML;
+                //generateBarGraph(numBundles, scheme);
+                //generateCumulativeGraph(numBundles, scheme)
             }
             for (const [key, value] of Object.entries(bundle.softCopy)) {
                 document.getElementById(key + numBundles.toString()).addEventListener("click", (e) => {
@@ -237,6 +239,8 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
 
             if(scheme.priceCardsGenerated){
                 col2.innerHTML = scheme.generatePriceCards(numBundles).outerHTML;
+                //generateBarGraph(numBundles, scheme)
+                //generateCumulativeGraph(numBundles, scheme)
             }
         });
 
@@ -283,6 +287,8 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
 
             if(submitted[numBundles]){
                 col2.innerHTML = scheme.generatePriceCards(numBundles).outerHTML;
+                //generateBarGraph(numBundles, scheme)
+                //generateCumulativeGraph(numBundles, scheme)
             }
 
             radiosTwoLock[numBundles] = true
@@ -332,7 +338,7 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
                                 }else if(key == "Initial Silverwing Fee"){
                                     scheme.initalSilverwingFeeSaving = 0.8
                                 }else{
-                                    bundle.outright[key] = 0
+                                    bundle.outrightLease[key] = 0
                                 }
                             }else{
                                 outrightCosts[key] -= scheme.deposit
@@ -343,7 +349,7 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
                                 }else if(key == "Initial Silverwing Fee"){
                                     scheme.initalSilverwingFeeSaving = scheme.deposit
                                 }else{
-                                    bundle.outright[key] -= scheme.deposit
+                                    bundle.outrightLease[key] -= scheme.deposit
                                 }
                                 spentDeposit = scheme.deposit
                                 scheme.deposit = 0
@@ -370,10 +376,14 @@ document.getElementById("addBundle").addEventListener("click", (e) => {
                     e.preventDefault();
         
                     col2.innerHTML = scheme.generatePriceCards(numBundles).outerHTML;
+                    //generateBarGraph(numBundles, scheme)
+                    //generateCumulativeGraph(numBundles, scheme)
                     submitted[numBundles] = true;
                 })
             }else{
                 col2.innerHTML = scheme.generatePriceCards(numBundles).outerHTML;
+                //generateBarGraph(numBundles, scheme)
+                //generateCumulativeGraph(numBundles, scheme)
                 submitted[numBundles] = true;
             }
               
@@ -440,9 +450,9 @@ function generateDeviceForm(bundleNumber){
     return bundleCard;
 }
 
-function generateGraph(numBundles, scheme){
+function generateBarGraph(numBundles, scheme){
     let d3 = window.d3
-    var svg = d3.select("#graphData" + numBundles.toString()),
+    var svg = d3.select("#barGraphData" + numBundles.toString()),
     margin = {
       top: 20,
       right: 20,
@@ -465,16 +475,12 @@ function generateGraph(numBundles, scheme){
     .range(["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00", "#d61c5a"]);
 
   var data = scheme.generateStackedJSON()
-
-  console.log(data)
-
   // fix pre-processing
   var keys = [];
   for (let key in data[0]){
     if (key != "Month")
       keys.push(key);
   }
-  console.log(keys)
   data.forEach(function(d){
     d.total = 0;
     keys.forEach(function(k){
@@ -557,4 +563,87 @@ function generateGraph(numBundles, scheme){
     .text(function(d) {
       return d;
     });
+}
+
+
+function generateCumulativeGraph(numBundles, scheme){
+
+    const data = scheme.generateAreaJSON()
+    console.log(data)
+      
+      const margin = { top: 60, right: 230, bottom: 50, left: 80 }
+      const width = 660 - margin.left - margin.right
+      const height = 400 - margin.top - margin.bottom
+      
+      const svg = d3
+        .select('#areaGraphData'+numBundles.toString())
+        .append('svg')
+        .attr('width', width + margin.left + margin.right)
+        .attr('height', height + margin.top + margin.bottom)
+        .append('g')
+        .attr('transform', `translate(${margin.left}, ${margin.top})`)
+      
+      const columns = Object.keys(data[0])
+      
+      data.columns = columns
+      // List of groups = header of the csv files
+      const keys = data.columns.slice(1, -1)
+      
+      const allValueColumns = data.columns.slice(1)
+      
+      const yExtent = [0, 0]
+      const dataParsed = data.map(d => {
+        const pd = { ...d }
+        allValueColumns.forEach(col => {
+          pd[col] = parseFloat(d[col])
+          yExtent[0] = d3.min([pd[col], yExtent[0]])
+          yExtent[1] = d3.max([pd[col], yExtent[1]])
+        })
+        return pd
+      })
+      
+      
+      // color palette
+      const color = d3.scaleOrdinal().domain(keys).range(d3.schemeSet2)
+      
+      // stack the data
+      const stackedData = d3.stack().keys(keys)(dataParsed)
+      
+      const xDomain = dataParsed.map(d => d.Month)
+      const x = d3.scalePoint().domain(xDomain).range([0, width])
+      
+      const xAxis = svg
+        .append('g')
+        .attr('transform', `translate(0, ${height})`)
+        .call(d3.axisBottom(x).ticks(5))
+      
+      const y = d3.scaleLinear().domain(yExtent).range([height, 0])
+      
+      const area = d3
+        .area()
+        .x(function (d) {
+          return x(d.data.Month)
+        })
+        .y0(function (d) {
+          return y(d[0])
+        })
+        .y1(function (d) {
+          return y(d[1])
+        })
+      
+      svg
+        .append('g')
+        .selectAll('path')
+        .data(stackedData)
+        .enter()
+        .append('path')
+        .attr('class', function (d) {
+          return `area ${d.key}`
+        })
+        .style('fill', function (d) {
+          return color(d.key)
+        })
+        .attr('d', area)
+        
+        svg.append('g').call(d3.axisLeft(y).ticks(5))
 }

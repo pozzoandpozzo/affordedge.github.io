@@ -14,6 +14,7 @@ class Bundle{
         this.softCopy = {}
         this.service = {}
         this.outright = {}
+        this.outrightLease = {}
         this.hard[this.deviceName] = this.devicePrice;
         
     }
@@ -54,6 +55,7 @@ class Bundle{
 
     moveSoftCostToOutright(name){
         this.outright[name] = this.softCopy[name];
+        this.outrightLease[name] = this.softCopy[name];
         delete this.soft[name];
     }
 
@@ -65,6 +67,7 @@ class Bundle{
     moveOutrightCostToSoft(name){
         this.soft[name] = this.outright[name];
         delete this.outright[name];
+        delete this.outrightLease[name];
     }
 
 
@@ -106,6 +109,15 @@ class Bundle{
         }
         return sum;
     }
+
+    outrightLeaseCost(){
+        let sum = 0;
+        for(var addon in this.outrightLease) {
+            sum += parseFloat(this.outrightLease[addon]);
+        }
+        return sum;
+    }
+
 
     softCostPercentage(){
         return ((this.softCost()*100)/this.totalCost()).toFixed(1);

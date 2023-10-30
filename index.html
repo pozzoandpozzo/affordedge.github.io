@@ -20,7 +20,27 @@
 
     </head>
     <body>
-        <div class="container pt-5">
+        <div class='header_placeholder_row mb-5'></div>
+<div class='row header_row'>    
+    <div class="col-1"></div>
+    <div class="col-5">
+        <img src="logo_colored.svg" class="img-fluid rounded" />
+    </div>
+         
+    <div class="col-5">
+
+      <ul class="nav justify-content-end">
+      <li class="nav-item">
+        <div class="d-grid gap-2">        
+            <label id="resetButton" class="btn btn-outline-primary">Reset</label>           
+        </div>
+      </li>
+    </ul>
+    
+    </div>
+</div>
+
+        <div class="container pt-5 mt-15">
             <h1>1:1 Program Affordability Calculator</h1>
                 <div class="card">
                     <div class="card-body">
@@ -59,5 +79,12 @@
                 </div>
             <br>
         </div>
+        <script>
+            // Select the reset button using its ID and add a click event listener
+            document.getElementById('resetButton').addEventListener('click', function() {
+                // Reload the current page
+                location.reload();
+            });
+        </script>
     </body>
 </html>
